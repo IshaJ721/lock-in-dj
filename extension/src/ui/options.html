@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lock In DJ - Settings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body style="background: #0f0f0f; min-height: 100vh;">
+  <div class="options-container">
+    <h1>Lock In DJ Settings</h1>
+
+    <!-- Spotify Playlists -->
+    <div class="options-section">
+      <h2>Spotify Playlists</h2>
+      <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
+        Select playlists for different intervention types
+      </p>
+
+      <div class="form-group">
+        <label>Lock-In Playlist (High Energy)</label>
+        <div id="lockin-playlists" class="playlist-selector">
+          <p style="color: #666; font-size: 12px;">Connect Spotify to see playlists</p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Deep Focus Playlist (Calm)</label>
+        <div id="deepfocus-playlists" class="playlist-selector">
+          <p style="color: #666; font-size: 12px;">Connect Spotify to see playlists</p>
+        </div>
+      </div>
+
+      <button id="refresh-playlists" class="btn-save" style="background: #333; margin-top: 0;">
+        Refresh Playlists
+      </button>
+    </div>
+
+    <!-- Site Lists -->
+    <div class="options-section">
+      <h2>Site Configuration</h2>
+
+      <div class="form-group">
+        <label>Study Sites (allowed)</label>
+        <textarea id="study-sites" placeholder="docs.google.com&#10;notion.so&#10;github.com"></textarea>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">One domain per line</p>
+      </div>
+
+      <div class="form-group">
+        <label>Doomscroll Sites (blocked)</label>
+        <textarea id="doomscroll-sites" placeholder="twitter.com&#10;instagram.com&#10;reddit.com"></textarea>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">One domain per line</p>
+      </div>
+    </div>
+
+    <!-- Behavior -->
+    <div class="options-section">
+      <h2>Behavior</h2>
+
+      <div class="form-group toggle-group">
+        <label style="margin: 0;">Enable Nuclear Option</label>
+        <label class="toggle">
+          <input type="checkbox" id="nuclear-enabled">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <p style="font-size: 11px; color: #666; margin-bottom: 16px;">
+        Play annoying audio when doomscrolling in strict mode
+      </p>
+
+      <div class="form-group toggle-group">
+        <label style="margin: 0;">Enable Pomodoro</label>
+        <label class="toggle">
+          <input type="checkbox" id="pomodoro-enabled">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div id="pomodoro-settings" style="margin-top: 16px; display: none;">
+        <div class="form-group">
+          <label>Work Duration (minutes)</label>
+          <input type="number" id="pomodoro-work" value="25" min="5" max="60">
+        </div>
+        <div class="form-group">
+          <label>Break Duration (minutes)</label>
+          <input type="number" id="pomodoro-break" value="5" min="1" max="30">
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy -->
+    <div class="options-section">
+      <h2>Privacy</h2>
+      <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
+        Lock In DJ processes all data locally. No data is sent to external servers.
+      </p>
+
+      <button id="clear-history" class="btn-save" style="background: #ef4444;">
+        Clear All History
+      </button>
+    </div>
+
+    <!-- Save -->
+    <button id="save-settings" class="btn-save">
+      Save Settings
+    </button>
+  </div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>
