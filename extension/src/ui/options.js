@@ -1,7 +1,4 @@
-// Options page controller
-
-import { isAuthenticated } from '../background/spotify/auth.js';
-import { getUserPlaylists } from '../background/spotify/api.js';
+// Options page controller - YouTube Music version
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,56 +22,14 @@ async function loadSettings() {
   $('pomodoro-work').value = settings.pomodoroWork;
   $('pomodoro-break').value = settings.pomodoroBreak;
   $('pomodoro-settings').style.display = settings.pomodoroEnabled ? 'block' : 'none';
-
-  // Load playlists if authenticated
-  if (await isAuthenticated()) {
-    loadPlaylists(state.spotify.playlists);
-  }
 }
 
 // ============================================================
-// Playlists
+// YouTube Music
 // ============================================================
 
-async function loadPlaylists(selectedPlaylists) {
-  try {
-    const data = await getUserPlaylists();
-    const playlists = data.items || [];
-
-    renderPlaylistSelector('lockin-playlists', playlists, selectedPlaylists?.lockIn, 'lockIn');
-    renderPlaylistSelector('deepfocus-playlists', playlists, selectedPlaylists?.deepFocus, 'deepFocus');
-  } catch (err) {
-    console.error('Failed to load playlists:', err);
-  }
-}
-
-function renderPlaylistSelector(containerId, playlists, selectedUri, type) {
-  const container = $(containerId);
-  container.innerHTML = '';
-
-  playlists.slice(0, 8).forEach((playlist) => {
-    const btn = document.createElement('button');
-    btn.className = 'playlist-option' + (playlist.uri === selectedUri ? ' selected' : '');
-    btn.dataset.uri = playlist.uri;
-    btn.dataset.type = type;
-    btn.innerHTML = `
-      <span class="playlist-name">${playlist.name}</span>
-      <span class="playlist-tracks">${playlist.tracks.total} tracks</span>
-    `;
-    btn.addEventListener('click', () => selectPlaylist(btn, containerId));
-    container.appendChild(btn);
-  });
-}
-
-function selectPlaylist(btn, containerId) {
-  const container = $(containerId);
-  container.querySelectorAll('.playlist-option').forEach((b) => b.classList.remove('selected'));
-  btn.classList.add('selected');
-}
-
-$('refresh-playlists').addEventListener('click', async () => {
-  const state = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
-  await loadPlaylists(state.spotify.playlists);
+$('open-ytmusic').addEventListener('click', () => {
+  chrome.tabs.create({ url: 'https://music.youtube.com/' });
 });
 
 // ============================================================
@@ -100,10 +55,6 @@ $('save-settings').addEventListener('click', async () => {
     .map((s) => s.trim())
     .filter((s) => s);
 
-  // Get selected playlists
-  const lockInPlaylist = document.querySelector('#lockin-playlists .playlist-option.selected')?.dataset.uri;
-  const deepFocusPlaylist = document.querySelector('#deepfocus-playlists .playlist-option.selected')?.dataset.uri;
-
   // Update state
   const result = await chrome.storage.local.get('state');
   const state = result.state;
@@ -117,13 +68,6 @@ $('save-settings').addEventListener('click', async () => {
     pomodoroWork: parseInt($('pomodoro-work').value) || 25,
     pomodoroBreak: parseInt($('pomodoro-break').value) || 5,
   };
-
-  if (lockInPlaylist) {
-    state.spotify.playlists.lockIn = lockInPlaylist;
-  }
-  if (deepFocusPlaylist) {
-    state.spotify.playlists.deepFocus = deepFocusPlaylist;
-  }
 
   await chrome.storage.local.set({ state });
 
@@ -143,7 +87,7 @@ $('save-settings').addEventListener('click', async () => {
 // ============================================================
 
 $('clear-history').addEventListener('click', async () => {
-  if (!confirm('Are you sure you want to clear all history and reset the learning model?')) {
+  if (!confirm('Are you sure you want to reset the learning model? This cannot be undone.')) {
     return;
   }
 
@@ -162,7 +106,11 @@ $('clear-history').addEventListener('click', async () => {
 
   await chrome.storage.local.set({ state });
 
-  alert('History cleared and learning model reset.');
+  const btn = $('clear-history');
+  btn.textContent = 'Reset Complete';
+  setTimeout(() => {
+    btn.textContent = 'Reset Learning Model';
+  }, 2000);
 });
 
 // ============================================================

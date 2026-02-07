@@ -20,11 +20,19 @@
     "tabs",
     "storage",
     "alarms",
-    "idle"
+    "idle",
+    "scripting"
   ],
   "host_permissions": [
-    "https://api.spotify.com/*",
-    "https://accounts.spotify.com/*"
+    "https://music.youtube.com/*",
+    "https://www.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["src/content/ytm_controller.js"],
+      "run_at": "document_idle"
+    }
   ],
   "icons": {
     "16": "icons/icon16.png",

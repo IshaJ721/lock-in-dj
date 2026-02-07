@@ -10,29 +10,14 @@
   <div class="options-container">
     <h1>Lock In DJ Settings</h1>
 
-    <!-- Spotify Playlists -->
+    <!-- Music Service -->
     <div class="options-section">
-      <h2>Spotify Playlists</h2>
+      <h2>Music Service</h2>
       <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
-        Select playlists for different intervention types
+        Open YouTube Music in a browser tab. Lock In DJ will control playback automatically.
       </p>
-
-      <div class="form-group">
-        <label>Lock-In Playlist (High Energy)</label>
-        <div id="lockin-playlists" class="playlist-selector">
-          <p style="color: #666; font-size: 12px;">Connect Spotify to see playlists</p>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Deep Focus Playlist (Calm)</label>
-        <div id="deepfocus-playlists" class="playlist-selector">
-          <p style="color: #666; font-size: 12px;">Connect Spotify to see playlists</p>
-        </div>
-      </div>
-
-      <button id="refresh-playlists" class="btn-save" style="background: #333; margin-top: 0;">
-        Refresh Playlists
+      <button id="open-ytmusic" class="btn-save" style="background: #ff0000;">
+        Open YouTube Music
       </button>
     </div>
 
@@ -41,35 +26,38 @@
       <h2>Site Configuration</h2>
 
       <div class="form-group">
-        <label>Study Sites (allowed)</label>
+        <label>Study Sites (productive)</label>
         <textarea id="study-sites" placeholder="docs.google.com&#10;notion.so&#10;github.com"></textarea>
-        <p style="font-size: 11px; color: #666; margin-top: 4px;">One domain per line</p>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">One domain per line. Time on these sites improves your focus score.</p>
       </div>
 
       <div class="form-group">
-        <label>Doomscroll Sites (blocked)</label>
+        <label>Doomscroll Sites (distracting)</label>
         <textarea id="doomscroll-sites" placeholder="twitter.com&#10;instagram.com&#10;reddit.com"></textarea>
-        <p style="font-size: 11px; color: #666; margin-top: 4px;">One domain per line</p>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">One domain per line. Time on these sites hurts your focus score.</p>
       </div>
     </div>
 
     <!-- Behavior -->
     <div class="options-section">
-      <h2>Behavior</h2>
+      <h2>Intervention Behavior</h2>
 
       <div class="form-group toggle-group">
-        <label style="margin: 0;">Enable Nuclear Option</label>
+        <div>
+          <label style="margin: 0;">Enable Nuclear Option</label>
+          <p style="font-size: 11px; color: #666; margin-top: 2px;">Max volume blast when doomscrolling in strict mode</p>
+        </div>
         <label class="toggle">
           <input type="checkbox" id="nuclear-enabled">
           <span class="toggle-slider"></span>
         </label>
       </div>
-      <p style="font-size: 11px; color: #666; margin-bottom: 16px;">
-        Play annoying audio when doomscrolling in strict mode
-      </p>
 
-      <div class="form-group toggle-group">
-        <label style="margin: 0;">Enable Pomodoro</label>
+      <div style="margin-top: 16px;" class="form-group toggle-group">
+        <div>
+          <label style="margin: 0;">Enable Pomodoro</label>
+          <p style="font-size: 11px; color: #666; margin-top: 2px;">Structured work/break cycles</p>
+        </div>
         <label class="toggle">
           <input type="checkbox" id="pomodoro-enabled">
           <span class="toggle-slider"></span>
@@ -88,16 +76,42 @@
       </div>
     </div>
 
+    <!-- Focus Model -->
+    <div class="options-section">
+      <h2>Focus Detection</h2>
+      <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
+        The system tracks tab switches and time on blocked sites. These signals are combined into a 0-100 focus score.
+      </p>
+
+      <div class="form-group">
+        <label>Tab Switch Sensitivity</label>
+        <select id="tab-sensitivity" style="width: 100%; padding: 10px; background: #0f0f0f; border: 1px solid #333; border-radius: 8px; color: #e5e5e5;">
+          <option value="low">Low (15+ switches = penalty)</option>
+          <option value="normal" selected>Normal (10+ switches = penalty)</option>
+          <option value="high">High (5+ switches = penalty)</option>
+        </select>
+      </div>
+    </div>
+
     <!-- Privacy -->
     <div class="options-section">
       <h2>Privacy</h2>
       <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
-        Lock In DJ processes all data locally. No data is sent to external servers.
+        Lock In DJ processes all data locally. No browsing history or personal data is sent anywhere.
       </p>
 
+      <div style="background: #1a2e1a; border: 1px solid #2d4a2d; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <p style="font-size: 12px; color: #4ade80; margin: 0;">
+          ✓ All focus detection happens on-device<br>
+          ✓ No URLs or page content is stored<br>
+          ✓ Learning model stays in your browser
+        </p>
+      </div>
+
       <button id="clear-history" class="btn-save" style="background: #ef4444;">
-        Clear All History
+        Reset Learning Model
       </button>
+      <p style="font-size: 11px; color: #666; margin-top: 4px;">This clears intervention history and resets what works for you.</p>
     </div>
 
     <!-- Save -->

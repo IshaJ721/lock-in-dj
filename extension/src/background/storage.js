@@ -39,25 +39,19 @@ const DEFAULT_STATE = {
 
   // User settings
   settings: {
-    studySites: ['docs.google.com', 'notion.so', 'overleaf.com', 'github.com', 'stackoverflow.com'],
-    doomscrollSites: ['twitter.com', 'x.com', 'instagram.com', 'tiktok.com', 'reddit.com', 'youtube.com'],
+    studySites: ['docs.google.com', 'notion.so', 'overleaf.com', 'github.com', 'stackoverflow.com', 'canvas.instructure.com'],
+    doomscrollSites: ['twitter.com', 'x.com', 'instagram.com', 'tiktok.com', 'reddit.com', 'facebook.com'],
     nuclearEnabled: false,
     pomodoroEnabled: false,
     pomodoroWork: 25,     // minutes
     pomodoroBreak: 5,
+    tabSensitivity: 'normal', // 'low' | 'normal' | 'high'
   },
 
-  // Spotify
-  spotify: {
-    accessToken: null,
-    refreshToken: null,
-    expiresAt: null,
-    playlists: {
-      lockIn: null,       // high energy focus
-      deepFocus: null,    // calm focus
-      patternBreak: null, // short interrupt track
-      annoying: null,     // nuclear option
-    },
+  // Music state (YouTube Music controlled via content script)
+  music: {
+    lastKnownTrack: null,
+    lastKnownPlaying: false,
   },
 
   // History for dashboard
@@ -93,17 +87,4 @@ export async function resetState() {
 export async function getSettings() {
   const state = await loadState();
   return state.settings;
-}
-
-// Convenience: get just spotify tokens
-export async function getSpotifyTokens() {
-  const state = await loadState();
-  return state.spotify;
-}
-
-export async function setSpotifyTokens(tokens) {
-  await updateState((s) => ({
-    ...s,
-    spotify: { ...s.spotify, ...tokens },
-  }));
 }

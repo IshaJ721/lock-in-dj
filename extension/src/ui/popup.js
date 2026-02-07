@@ -1,7 +1,4 @@
-// Popup UI controller
-
-import { startAuthFlow, isAuthenticated } from '../background/spotify/auth.js';
-import { getPlaybackInfo } from '../background/spotify/player.js';
+// Popup UI controller - YouTube Music version
 
 // ============================================================
 // DOM Elements
@@ -10,13 +7,16 @@ import { getPlaybackInfo } from '../background/spotify/player.js';
 const $ = (id) => document.getElementById(id);
 
 const elements = {
-  // Spotify
-  spotifyDisconnected: $('spotify-disconnected'),
-  spotifyConnected: $('spotify-connected'),
-  connectSpotify: $('connect-spotify'),
+  // Music
+  musicDisconnected: $('music-disconnected'),
+  musicConnected: $('music-connected'),
+  openYTMusic: $('open-ytmusic'),
   albumArt: $('album-art'),
   trackName: $('track-name'),
   artistName: $('artist-name'),
+  prevBtn: $('prev-btn'),
+  playPauseBtn: $('play-pause-btn'),
+  nextBtn: $('next-btn'),
 
   // Focus
   focusScore: $('focus-score'),
@@ -52,32 +52,35 @@ let sessionStartTime = null;
 let updateInterval = null;
 
 // ============================================================
-// Spotify
+// YouTube Music
 // ============================================================
 
-async function checkSpotifyConnection() {
-  const authenticated = await isAuthenticated();
+async function checkMusicConnection() {
+  const state = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
 
-  if (authenticated) {
-    elements.spotifyDisconnected.classList.add('hidden');
-    elements.spotifyConnected.classList.remove('hidden');
+  if (state.musicAvailable) {
+    elements.musicDisconnected.classList.add('hidden');
+    elements.musicConnected.classList.remove('hidden');
     updateNowPlaying();
   } else {
-    elements.spotifyDisconnected.classList.remove('hidden');
-    elements.spotifyConnected.classList.add('hidden');
+    elements.musicDisconnected.classList.remove('hidden');
+    elements.musicConnected.classList.add('hidden');
   }
 }
 
 async function updateNowPlaying() {
   try {
-    const playback = await getPlaybackInfo();
-    if (playback) {
+    const playback = await chrome.runtime.sendMessage({ type: 'GET_PLAYBACK' });
+    if (playback && playback.available) {
       elements.trackName.textContent = playback.track || 'Not playing';
       elements.artistName.textContent = playback.artist || '';
-      if (playback.albumArt) {
-        elements.albumArt.src = playback.albumArt;
+      if (playback.thumbnail) {
+        elements.albumArt.src = playback.thumbnail;
         elements.albumArt.style.display = 'block';
+      } else {
+        elements.albumArt.style.display = 'none';
       }
+      elements.playPauseBtn.textContent = playback.isPlaying ? '⏸' : '▶';
     } else {
       elements.trackName.textContent = 'Not playing';
       elements.artistName.textContent = '';
@@ -88,23 +91,35 @@ async function updateNowPlaying() {
   }
 }
 
-elements.connectSpotify.addEventListener('click', async () => {
-  try {
-    elements.connectSpotify.disabled = true;
-    elements.connectSpotify.textContent = 'Connecting...';
-    await startAuthFlow();
-    await checkSpotifyConnection();
-  } catch (err) {
-    console.error('Spotify auth failed:', err);
-    alert('Failed to connect to Spotify: ' + err.message);
-  } finally {
-    elements.connectSpotify.disabled = false;
-    elements.connectSpotify.innerHTML = `
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-      </svg>
-      Connect Spotify
-    `;
+// Open YouTube Music
+elements.openYTMusic.addEventListener('click', async () => {
+  await chrome.tabs.create({ url: 'https://music.youtube.com/' });
+  // Check again after a delay
+  setTimeout(checkMusicConnection, 2000);
+});
+
+// Playback controls
+elements.prevBtn?.addEventListener('click', async () => {
+  const tabs = await chrome.tabs.query({ url: 'https://music.youtube.com/*' });
+  if (tabs[0]) {
+    await chrome.tabs.sendMessage(tabs[0].id, { action: 'PREVIOUS' });
+    setTimeout(updateNowPlaying, 500);
+  }
+});
+
+elements.playPauseBtn?.addEventListener('click', async () => {
+  const tabs = await chrome.tabs.query({ url: 'https://music.youtube.com/*' });
+  if (tabs[0]) {
+    await chrome.tabs.sendMessage(tabs[0].id, { action: 'TOGGLE' });
+    setTimeout(updateNowPlaying, 300);
+  }
+});
+
+elements.nextBtn?.addEventListener('click', async () => {
+  const tabs = await chrome.tabs.query({ url: 'https://music.youtube.com/*' });
+  if (tabs[0]) {
+    await chrome.tabs.sendMessage(tabs[0].id, { action: 'NEXT' });
+    setTimeout(updateNowPlaying, 500);
   }
 });
 
@@ -171,12 +186,6 @@ elements.modeBtns.forEach((btn) => {
 
 // Start session
 elements.startSession.addEventListener('click', async () => {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    alert('Please connect Spotify first');
-    return;
-  }
-
   await chrome.runtime.sendMessage({ type: 'START_SESSION', mode: selectedMode });
   sessionStartTime = Date.now();
   showActiveSession();
@@ -250,6 +259,12 @@ elements.toggleNuclear.addEventListener('click', async () => {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'STATE_UPDATE') {
     updateFocusDisplay(message.focusScore, message.focusTrend, message.trendDelta);
+
+    // Update music connection status
+    if (message.musicAvailable) {
+      elements.musicDisconnected.classList.add('hidden');
+      elements.musicConnected.classList.remove('hidden');
+    }
   }
 
   if (message.type === 'INTERVENTION_APPLIED') {
@@ -266,7 +281,7 @@ chrome.runtime.onMessage.addListener((message) => {
 // ============================================================
 
 async function init() {
-  await checkSpotifyConnection();
+  await checkMusicConnection();
 
   // Get current state
   const state = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
@@ -290,10 +305,13 @@ async function init() {
 
   // Periodic updates
   setInterval(async () => {
-    if (state.session.active) {
+    await checkMusicConnection();
+    await updateNowPlaying();
+
+    const currentState = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
+    if (currentState.session.active) {
       await chrome.runtime.sendMessage({ type: 'TICK' });
     }
-    await updateNowPlaying();
   }, 5000);
 }
 

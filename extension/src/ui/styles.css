@@ -51,19 +51,19 @@ body {
   margin-bottom: 12px;
 }
 
-/* Spotify */
-.spotify-status {
+/* Music */
+.music-status {
   text-align: center;
 }
 
-.spotify-status p {
+.music-status p {
   color: #888;
   font-size: 13px;
   margin-bottom: 12px;
 }
 
-.btn-spotify {
-  background: #1db954;
+.btn-ytmusic {
+  background: #ff0000;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -77,11 +77,11 @@ body {
   transition: background 0.2s;
 }
 
-.btn-spotify:hover {
-  background: #1ed760;
+.btn-ytmusic:hover {
+  background: #cc0000;
 }
 
-.btn-spotify:disabled {
+.btn-ytmusic:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -118,6 +118,31 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.playback-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.control-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.control-btn:hover {
+  background: #444;
 }
 
 /* Focus Display */

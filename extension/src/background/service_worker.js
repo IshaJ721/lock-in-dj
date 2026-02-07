@@ -16,8 +16,7 @@ import {
   evaluateIntervention,
   getInterventionDescription,
 } from './decision_engine.js';
-import { applyIntervention } from './spotify/player.js';
-import { isAuthenticated } from './spotify/auth.js';
+import { applyIntervention, isYTMusicAvailable, getPlaybackInfo } from './music_controller.js';
 
 // ============================================================
 // Constants
@@ -112,9 +111,8 @@ async function tick() {
   // Skip if session not active
   if (!state.session.active) return;
 
-  // Skip if not authenticated with Spotify
-  const authenticated = await isAuthenticated();
-  if (!authenticated) return;
+  // Check if YouTube Music is available (don't skip if not - still track focus)
+  const musicAvailable = await isYTMusicAvailable();
 
   // Update off-task time if currently on doomscroll site
   if (offTaskStart) {
@@ -160,32 +158,34 @@ async function tick() {
     }
   }
 
-  // Check if we should intervene
-  const interventionCheck = shouldIntervene(state, now);
+  // Check if we should intervene (only if music is available)
+  if (musicAvailable) {
+    const interventionCheck = shouldIntervene(state, now);
 
-  if (interventionCheck.should) {
-    const isDoomscrolling = currentTabUrl && isDoomscrollSite(currentTabUrl, state.settings.doomscrollSites);
-    const interventionType = selectIntervention(state, isDoomscrolling);
+    if (interventionCheck.should) {
+      const isDoomscrolling = currentTabUrl && isDoomscrollSite(currentTabUrl, state.settings.doomscrollSites);
+      const interventionType = selectIntervention(state, isDoomscrolling);
 
-    console.log(`Intervening: ${interventionType} (reason: ${interventionCheck.reason})`);
+      console.log(`Intervening: ${interventionType} (reason: ${interventionCheck.reason})`);
 
-    // Apply the intervention
-    const success = await applyIntervention(interventionType);
+      // Apply the intervention
+      const result = await applyIntervention(interventionType);
 
-    if (success) {
-      state.lastIntervention = {
-        type: interventionType,
-        appliedAt: now,
-        preScore: focusScore,
-      };
+      if (result?.success) {
+        state.lastIntervention = {
+          type: interventionType,
+          appliedAt: now,
+          preScore: focusScore,
+        };
 
-      // Notify UI
-      chrome.runtime.sendMessage({
-        type: 'INTERVENTION_APPLIED',
-        intervention: interventionType,
-        description: getInterventionDescription(interventionType),
-        focusScore,
-      }).catch(() => {});
+        // Notify UI
+        chrome.runtime.sendMessage({
+          type: 'INTERVENTION_APPLIED',
+          intervention: interventionType,
+          description: getInterventionDescription(interventionType),
+          focusScore,
+        }).catch(() => {});
+      }
     }
   }
 
@@ -197,6 +197,7 @@ async function tick() {
     trendDelta,
     sessionActive: state.session.active,
     mode: state.session.mode,
+    musicAvailable,
   }).catch(() => {});
 
   await saveState(state);
@@ -302,11 +303,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'GET_STATE':
         const state = await loadState();
-        sendResponse(state);
+        const musicAvailable = await isYTMusicAvailable();
+        sendResponse({ ...state, musicAvailable });
+        break;
+
+      case 'GET_PLAYBACK':
+        const playback = await getPlaybackInfo();
+        sendResponse(playback);
         break;
 
       case 'TICK':
         await tick();
+        sendResponse({ success: true });
+        break;
+
+      case 'YTM_READY':
+        console.log('YouTube Music tab ready:', message.url);
         sendResponse({ success: true });
         break;
 
