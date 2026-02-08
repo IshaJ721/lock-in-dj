@@ -1,7 +1,7 @@
 // Main service worker - the brain of FocusDJ
 // Orchestrates: tab tracking → focus scoring → intervention → feedback
 
-import { loadState, saveState, updateState, categorizeSite, getMusicIntelligence, clearMusicIntelligence, setApiKey, getApiKey } from './storage.js';
+import { loadState, saveState, updateState, categorizeSite, smartCategorizeSite, getMusicIntelligence, clearMusicIntelligence, setApiKey, getApiKey } from './storage.js';
 import {
   computeFocusScore,
   updateEMA,
@@ -65,6 +65,9 @@ let visionEnabled = false;
 let lastVisionSignal = null;
 let faceMissingMs = 0;
 let lookingAwayMs = 0;
+let lastFaceAwayAlarm = 0;
+const FACE_AWAY_ALARM_THRESHOLD_MS = 10000; // 10 seconds before alarm
+const FACE_AWAY_ALARM_COOLDOWN_MS = 30000; // 30 seconds between alarms
 
 // Doomscroll detection state
 let doomscrollSeconds = 0;
@@ -143,12 +146,13 @@ async function handleTabChange(newUrl) {
     }
   }
 
-  // Extract hostname and categorize new site
+  // Extract hostname and categorize new site (using AI for unknown sites)
   let hostname = null;
   let category = 'neutral';
   try {
     hostname = new URL(newUrl).hostname;
-    category = categorizeSite(hostname, state.settings);
+    // Use smart categorization (AI-powered for unknown sites)
+    category = await smartCategorizeSite(hostname, state.settings);
   } catch {
     // Invalid URL
   }
@@ -427,7 +431,24 @@ async function handleVisionSignal(message) {
 
   await saveState(state);
 
-  console.log('[Vision] Face:', message.facePresent, 'Attention:', Math.round(message.attentionScore * 100) + '%');
+  // Trigger alarm if face has been away too long
+  const now = Date.now();
+  if (!message.facePresent && faceMissingMs >= FACE_AWAY_ALARM_THRESHOLD_MS) {
+    const timeSinceLastAlarm = now - lastFaceAwayAlarm;
+    if (timeSinceLastAlarm > FACE_AWAY_ALARM_COOLDOWN_MS) {
+      console.log('[Vision] Face away alarm triggered!');
+      lastFaceAwayAlarm = now;
+      await playAlarm('PLAY_CHIME'); // Gentle chime first
+
+      // If still away after another 10s, escalate
+      if (faceMissingMs >= FACE_AWAY_ALARM_THRESHOLD_MS * 2) {
+        await playAlarm('PLAY_ALARM');
+        await showViolaPopup('stillDistracted', "Hey! I can't see you. Are you still there?", state.metrics.focusScore);
+      }
+    }
+  }
+
+  console.log('[Vision] Face:', message.facePresent, 'Away:', faceMissingMs + 'ms', 'Attention:', Math.round(message.attentionScore * 100) + '%');
 }
 
 // ============================================================

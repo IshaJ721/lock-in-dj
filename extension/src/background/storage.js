@@ -223,6 +223,100 @@ export function categorizeSite(hostname, settings = {}) {
   return 'neutral';
 }
 
+// Cache for AI-categorized sites
+const aiCategoryCache = {};
+
+// Default Groq API key
+const DEFAULT_GROQ_KEY = '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';
+
+/**
+ * Categorize a site using AI (Groq)
+ * Called for sites not in the hardcoded list
+ */
+export async function categorizeSiteWithAI(hostname) {
+  if (!hostname) return 'neutral';
+
+  // Check cache first
+  if (aiCategoryCache[hostname]) {
+    return aiCategoryCache[hostname];
+  }
+
+  try {
+    // Get API key
+    let apiKey = null;
+    try {
+      const result = await chrome.storage.local.get('apiKey_groq');
+      apiKey = result.apiKey_groq || DEFAULT_GROQ_KEY;
+    } catch {
+      apiKey = DEFAULT_GROQ_KEY;
+    }
+
+    if (!apiKey) return 'neutral';
+
+    const prompt = `Categorize this website hostname for a productivity/focus app: "${hostname}"
+
+Categories:
+- productive: work, coding, docs, learning, research, professional tools
+- socialMedia: social networks, messaging, forums, communities
+- entertainment: streaming, videos, music (except focus music), gaming content
+- games: online games, gaming platforms
+- shopping: e-commerce, retail, marketplaces
+- news: news sites, media outlets, blogs
+- neutral: everything else (utilities, search engines, etc.)
+
+Respond with ONLY the category name (one word, lowercase).`;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 20,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[AI Categorize] API error:', response.status);
+      return 'neutral';
+    }
+
+    const data = await response.json();
+    const category = data.choices?.[0]?.message?.content?.trim().toLowerCase();
+
+    // Validate category
+    const validCategories = ['productive', 'socialMedia', 'entertainment', 'games', 'shopping', 'news', 'neutral'];
+    const normalizedCategory = validCategories.find(c => c.toLowerCase() === category) || 'neutral';
+
+    // Cache the result
+    aiCategoryCache[hostname] = normalizedCategory;
+    console.log('[AI Categorize]', hostname, '→', normalizedCategory);
+
+    return normalizedCategory;
+  } catch (err) {
+    console.error('[AI Categorize] Error:', err);
+    return 'neutral';
+  }
+}
+
+/**
+ * Smart categorize - uses hardcoded first, then AI for unknown sites
+ */
+export async function smartCategorizeSite(hostname, settings = {}) {
+  // Try hardcoded first (fast)
+  const hardcodedCategory = categorizeSite(hostname, settings);
+  if (hardcodedCategory !== 'neutral') {
+    return hardcodedCategory;
+  }
+
+  // Use AI for unknown sites
+  return categorizeSiteWithAI(hostname);
+}
+
 /**
  * Get penalty multiplier for a category
  * Returns: negative = penalty, positive = bonus, 0 = neutral
