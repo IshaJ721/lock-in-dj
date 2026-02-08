@@ -136,6 +136,15 @@ export function selectIntervention(state, isDoomscrolling) {
     return INTERVENTIONS.WHITE_NOISE;
   }
 
+  // AUTO MUSIC SWITCH: If enabled and focus is below threshold, use smart recommend
+  const autoMusicEnabled = settings.autoMusicSwitch !== false; // Default true
+  const autoThreshold = settings.autoMusicThreshold || 50;
+
+  if (autoMusicEnabled && state.metrics.focusScore < autoThreshold) {
+    // Prioritize music switching when focus is low
+    return INTERVENTIONS.SMART_RECOMMEND;
+  }
+
   // Otherwise use bandit to select best intervention
   return selectArmUCB(policy, true);
 }

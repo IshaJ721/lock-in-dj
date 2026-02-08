@@ -153,10 +153,14 @@ const DEFAULT_STATE = {
 
     // AI Music Recommendations
     aiRecommendationsEnabled: true,  // use AI-powered music recommendations
+    autoMusicSwitch: true,           // automatically switch music when focus drops
+    autoMusicThreshold: 50,          // focus score threshold to trigger auto switch
+    preferredGenres: [],             // user's preferred genres for recommendations
   },
 
   // Music state
   music: {
+    recentlyRecommended: [],         // track recently recommended songs to avoid repeats
     lastKnownTrack: null,
     lastKnownPlaying: false,
   },

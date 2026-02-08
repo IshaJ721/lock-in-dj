@@ -452,25 +452,104 @@ function mergeRecommendations(recommendations, profile) {
   return unique.sort((a, b) => b.score - a.score);
 }
 
-// Default focus music recommendations (used when no track history exists)
-const DEFAULT_FOCUS_MUSIC = [
-  { title: 'lofi hip hop radio', artist: 'Lofi Girl', reason: 'Popular focus music', estimatedBpm: 85, searchQuery: 'lofi hip hop radio beats to study' },
-  { title: 'Deep Focus', artist: 'Spotify', reason: 'Ambient focus music', estimatedBpm: 90, searchQuery: 'deep focus ambient music for concentration' },
-  { title: 'Chillhop Essentials', artist: 'Chillhop Music', reason: 'Chill study beats', estimatedBpm: 80, searchQuery: 'chillhop essentials study beats' },
-  { title: 'Brain Food', artist: 'Various', reason: 'Instrumental focus tracks', estimatedBpm: 100, searchQuery: 'brain food instrumental focus music' },
-  { title: 'Coding Mode', artist: 'Various', reason: 'Programming focus music', estimatedBpm: 110, searchQuery: 'coding programming music focus' },
-  { title: 'Jazz for Study', artist: 'Various', reason: 'Jazz focus music', estimatedBpm: 95, searchQuery: 'jazz music for studying concentration' },
-  { title: 'Classical Focus', artist: 'Various', reason: 'Classical study music', estimatedBpm: 80, searchQuery: 'classical music for focus and concentration' },
-  { title: 'Electronic Focus', artist: 'Various', reason: 'Upbeat focus music', estimatedBpm: 120, searchQuery: 'electronic focus music for work' },
-  { title: 'Synthwave Focus', artist: 'Various', reason: 'Retro focus vibes', estimatedBpm: 115, searchQuery: 'synthwave focus music for productivity' },
-  { title: 'Nature Sounds Focus', artist: 'Various', reason: 'Calm ambient sounds', estimatedBpm: 70, searchQuery: 'nature sounds with music for focus' },
-];
+// Default focus music by genre (expanded for variety)
+const DEFAULT_FOCUS_MUSIC_BY_GENRE = {
+  lofi: [
+    { title: 'lofi hip hop radio', artist: 'Lofi Girl', searchQuery: 'lofi hip hop radio beats to relax study', estimatedBpm: 85 },
+    { title: 'Chillhop Essentials', artist: 'Chillhop', searchQuery: 'chillhop essentials winter', estimatedBpm: 80 },
+    { title: 'lofi beats', artist: 'College Music', searchQuery: 'college music lofi beats', estimatedBpm: 82 },
+    { title: 'Jazz Hop Cafe', artist: 'Various', searchQuery: 'jazz hop cafe lofi', estimatedBpm: 78 },
+    { title: 'Chill Lofi Study', artist: 'Dreamy', searchQuery: 'dreamy lofi study music', estimatedBpm: 75 },
+  ],
+  jazz: [
+    { title: 'Jazz for Study', artist: 'Various', searchQuery: 'smooth jazz for studying', estimatedBpm: 95 },
+    { title: 'Coffee Shop Jazz', artist: 'Various', searchQuery: 'coffee shop jazz instrumental', estimatedBpm: 100 },
+    { title: 'Late Night Jazz', artist: 'Various', searchQuery: 'late night jazz piano', estimatedBpm: 90 },
+    { title: 'Bossa Nova Focus', artist: 'Various', searchQuery: 'bossa nova jazz focus', estimatedBpm: 105 },
+  ],
+  classical: [
+    { title: 'Classical Focus', artist: 'Various', searchQuery: 'classical music for concentration piano', estimatedBpm: 80 },
+    { title: 'Bach for Studying', artist: 'Bach', searchQuery: 'bach study music instrumental', estimatedBpm: 85 },
+    { title: 'Mozart Effect', artist: 'Mozart', searchQuery: 'mozart study concentration', estimatedBpm: 90 },
+    { title: 'Debussy Clair de Lune', artist: 'Debussy', searchQuery: 'debussy peaceful piano', estimatedBpm: 70 },
+  ],
+  electronic: [
+    { title: 'Deep Focus Electronic', artist: 'Various', searchQuery: 'deep focus electronic ambient', estimatedBpm: 120 },
+    { title: 'Chillstep Focus', artist: 'Various', searchQuery: 'chillstep music for focus', estimatedBpm: 140 },
+    { title: 'Ambient Electronic', artist: 'Various', searchQuery: 'ambient electronic work music', estimatedBpm: 100 },
+    { title: 'Future Garage', artist: 'Various', searchQuery: 'future garage study music', estimatedBpm: 130 },
+  ],
+  synthwave: [
+    { title: 'Synthwave Focus', artist: 'Various', searchQuery: 'synthwave retrowave study', estimatedBpm: 115 },
+    { title: 'Outrun Vibes', artist: 'Various', searchQuery: 'outrun synthwave focus', estimatedBpm: 120 },
+    { title: 'Retrowave Coding', artist: 'Various', searchQuery: 'retrowave coding music', estimatedBpm: 110 },
+  ],
+  ambient: [
+    { title: 'Ambient Focus', artist: 'Various', searchQuery: 'ambient music for deep focus', estimatedBpm: 70 },
+    { title: 'Space Ambient', artist: 'Various', searchQuery: 'space ambient meditation focus', estimatedBpm: 60 },
+    { title: 'Nature Sounds Music', artist: 'Various', searchQuery: 'nature sounds with soft music', estimatedBpm: 65 },
+    { title: 'Rain and Piano', artist: 'Various', searchQuery: 'rain sounds piano study', estimatedBpm: 75 },
+  ],
+  instrumental: [
+    { title: 'Acoustic Focus', artist: 'Various', searchQuery: 'acoustic guitar instrumental focus', estimatedBpm: 90 },
+    { title: 'Piano Study', artist: 'Various', searchQuery: 'piano instrumental study music', estimatedBpm: 85 },
+    { title: 'Instrumental Hip Hop', artist: 'Various', searchQuery: 'instrumental hip hop beats no lyrics', estimatedBpm: 95 },
+  ],
+  rock: [
+    { title: 'Post Rock Focus', artist: 'Various', searchQuery: 'post rock instrumental focus', estimatedBpm: 110 },
+    { title: 'Instrumental Rock', artist: 'Various', searchQuery: 'instrumental rock study', estimatedBpm: 120 },
+  ],
+  pop: [
+    { title: 'Chill Pop Instrumentals', artist: 'Various', searchQuery: 'chill pop instrumental focus', estimatedBpm: 100 },
+    { title: 'Acoustic Pop Covers', artist: 'Various', searchQuery: 'acoustic pop covers instrumental', estimatedBpm: 95 },
+  ],
+};
+
+// Flatten all defaults for fallback
+const ALL_DEFAULT_MUSIC = Object.values(DEFAULT_FOCUS_MUSIC_BY_GENRE).flat();
+
+/**
+ * Get recently recommended songs from storage (to avoid repeats)
+ */
+async function getRecentlyRecommended() {
+  const state = await loadState();
+  return state.music?.recentlyRecommended || [];
+}
+
+/**
+ * Add a song to recently recommended list
+ */
+async function addToRecentlyRecommended(searchQuery) {
+  await updateState(s => {
+    const recent = s.music?.recentlyRecommended || [];
+    recent.unshift(searchQuery);
+    // Keep only last 20 to avoid repeats
+    if (recent.length > 20) {
+      recent.length = 20;
+    }
+    return {
+      ...s,
+      music: { ...s.music, recentlyRecommended: recent },
+    };
+  });
+}
+
+/**
+ * Get user's preferred genres from settings
+ */
+async function getUserPreferredGenres() {
+  const state = await loadState();
+  return state.settings?.preferredGenres || [];
+}
 
 /**
  * Get contextual recommendation for current focus state
  */
 export async function getContextualRecommendation(focusScore, currentTrack) {
+  const state = await loadState();
   const profile = await buildUserProfile();
+  const recentlyRecommended = await getRecentlyRecommended();
+  const userGenres = state.settings?.preferredGenres || [];
 
   // If focus is low, target higher BPM
   let targetBpmRange = profile.optimalBpmRange || 'moderate';
@@ -482,33 +561,78 @@ export async function getContextualRecommendation(focusScore, currentTrack) {
     }
   }
 
-  let recommendations = await getRecommendations(20);
+  // Build recommendation pool
+  let recommendations = await getRecommendations(30);
 
-  // If no recommendations from history/AI, use defaults
-  if (!recommendations || recommendations.length === 0) {
-    console.log('[Recommendation Engine] No personalized recommendations, using defaults');
-    recommendations = [...DEFAULT_FOCUS_MUSIC];
-
-    // Shuffle the defaults to add variety
-    for (let i = recommendations.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [recommendations[i], recommendations[j]] = [recommendations[j], recommendations[i]];
+  // Add genre-specific defaults based on user preferences
+  if (userGenres.length > 0) {
+    for (const genre of userGenres) {
+      const genreMusic = DEFAULT_FOCUS_MUSIC_BY_GENRE[genre.toLowerCase()];
+      if (genreMusic) {
+        recommendations = [...recommendations, ...genreMusic.map(m => ({
+          ...m,
+          reason: `Matches your ${genre} preference`,
+          source: 'genre_preference',
+          confidence: 0.8,
+        }))];
+      }
     }
   }
 
-  // Filter to target BPM range
-  const filtered = recommendations.filter(rec => {
+  // If still no recommendations, use all defaults
+  if (!recommendations || recommendations.length === 0) {
+    console.log('[Recommendation Engine] Using default recommendations');
+    recommendations = ALL_DEFAULT_MUSIC.map(m => ({
+      ...m,
+      reason: 'Focus music recommendation',
+      source: 'default',
+      confidence: 0.5,
+    }));
+  }
+
+  // Shuffle for variety
+  for (let i = recommendations.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [recommendations[i], recommendations[j]] = [recommendations[j], recommendations[i]];
+  }
+
+  // Filter out recently recommended (avoid repeats)
+  const notRecent = recommendations.filter(rec =>
+    !recentlyRecommended.includes(rec.searchQuery)
+  );
+
+  // Filter to target BPM range (but keep some variety)
+  const bpmFiltered = notRecent.filter(rec => {
     if (!rec.estimatedBpm) return true;
     return getBpmRange(rec.estimatedBpm) === targetBpmRange;
   });
 
   // Exclude current track
-  const candidates = filtered.filter(rec =>
-    rec.title?.toLowerCase() !== currentTrack?.title?.toLowerCase()
+  const candidates = (bpmFiltered.length > 0 ? bpmFiltered : notRecent).filter(rec =>
+    rec.title?.toLowerCase() !== currentTrack?.title?.toLowerCase() &&
+    rec.searchQuery?.toLowerCase() !== currentTrack?.title?.toLowerCase()
   );
 
-  const result = candidates[0] || recommendations[0] || DEFAULT_FOCUS_MUSIC[0];
-  console.log('[Recommendation Engine] Selected recommendation:', result?.title, 'Query:', result?.searchQuery);
+  // Pick a result (prefer candidates, fallback to any not-recent, then any)
+  let result = candidates[0] || notRecent[0] || recommendations[0];
+
+  // If we've exhausted all options, clear recently recommended and pick random
+  if (!result || recentlyRecommended.includes(result?.searchQuery)) {
+    console.log('[Recommendation Engine] Clearing recently recommended, starting fresh');
+    await updateState(s => ({
+      ...s,
+      music: { ...s.music, recentlyRecommended: [] },
+    }));
+    result = recommendations[Math.floor(Math.random() * recommendations.length)];
+  }
+
+  // Track this recommendation to avoid repeating it
+  if (result?.searchQuery) {
+    await addToRecentlyRecommended(result.searchQuery);
+  }
+
+  console.log('[Recommendation Engine] Selected:', result?.title, '| Query:', result?.searchQuery);
+  console.log('[Recommendation Engine] Recently played:', recentlyRecommended.length, 'tracks');
 
   return result;
 }

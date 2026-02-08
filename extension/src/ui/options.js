@@ -26,6 +26,17 @@ async function loadSettings() {
   // AI Recommendations
   $('ai-recommendations-enabled').checked = settings.aiRecommendationsEnabled !== false;
 
+  // Auto Music Switch
+  $('auto-music-switch').checked = settings.autoMusicSwitch !== false;
+  $('auto-music-threshold').value = settings.autoMusicThreshold || 50;
+  $('threshold-value').textContent = settings.autoMusicThreshold || 50;
+
+  // Genre Preferences
+  const preferredGenres = settings.preferredGenres || [];
+  document.querySelectorAll('.genre-checkbox').forEach(cb => {
+    cb.checked = preferredGenres.includes(cb.value);
+  });
+
   // Load API key status
   await loadApiKeyStatus();
 
@@ -226,6 +237,14 @@ $('pomodoro-enabled').addEventListener('change', (e) => {
 });
 
 // ============================================================
+// Auto Music Threshold slider
+// ============================================================
+
+$('auto-music-threshold').addEventListener('input', (e) => {
+  $('threshold-value').textContent = e.target.value;
+});
+
+// ============================================================
 // Save settings
 // ============================================================
 
@@ -255,6 +274,12 @@ $('save-settings').addEventListener('click', async () => {
   const result = await chrome.storage.local.get('state');
   const state = result.state;
 
+  // Get selected genres
+  const preferredGenres = [];
+  document.querySelectorAll('.genre-checkbox:checked').forEach(cb => {
+    preferredGenres.push(cb.value);
+  });
+
   state.settings = {
     ...state.settings,
     customProductive,
@@ -267,6 +292,9 @@ $('save-settings').addEventListener('click', async () => {
     pomodoroWork: parseInt($('pomodoro-work').value) || 25,
     pomodoroBreak: parseInt($('pomodoro-break').value) || 5,
     aiRecommendationsEnabled: $('ai-recommendations-enabled').checked,
+    autoMusicSwitch: $('auto-music-switch').checked,
+    autoMusicThreshold: parseInt($('auto-music-threshold').value) || 50,
+    preferredGenres,
   };
 
   await chrome.storage.local.set({ state });

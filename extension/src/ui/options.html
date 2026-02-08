@@ -154,6 +154,60 @@
 
       <div class="form-group toggle-group">
         <div>
+          <label style="margin: 0;">Auto Music Switch</label>
+          <p style="font-size: 11px; color: #666; margin-top: 2px;">Automatically change music when focus drops below threshold</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="auto-music-switch" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label>Focus Threshold for Auto Switch</label>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="range" id="auto-music-threshold" min="30" max="70" value="50" style="flex: 1;">
+          <span id="threshold-value" style="min-width: 40px; text-align: center; font-weight: 600;">50</span>
+        </div>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">Music will change when focus score drops below this level</p>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label>Preferred Music Genres</label>
+        <p style="font-size: 11px; color: #666; margin-bottom: 8px;">Select genres you enjoy for focus music</p>
+        <div id="genre-checkboxes" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="lofi" class="genre-checkbox"> Lofi
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="jazz" class="genre-checkbox"> Jazz
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="classical" class="genre-checkbox"> Classical
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="electronic" class="genre-checkbox"> Electronic
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="synthwave" class="genre-checkbox"> Synthwave
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="ambient" class="genre-checkbox"> Ambient
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="instrumental" class="genre-checkbox"> Instrumental
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="rock" class="genre-checkbox"> Rock
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+            <input type="checkbox" value="pop" class="genre-checkbox"> Pop
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group toggle-group" style="margin-top: 16px;">
+        <div>
           <label style="margin: 0;">Enable AI Recommendations</label>
           <p style="font-size: 11px; color: #666; margin-top: 2px;">Use learned patterns to recommend focus-optimal tracks</p>
         </div>
