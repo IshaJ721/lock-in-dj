@@ -1,97 +1,229 @@
-// Focus score computation - heuristic model (ML-ready architecture)
+// Focus score computation - multi-signal model
+// Incorporates: tab switches, site categories, mouse/keyboard activity, scrolling
+
+import { categorizeSite, getCategoryPenalty } from './storage.js';
 
 const WINDOW_MS = 60_000; // 60 second rolling window
 const EMA_ALPHA = 0.3;    // smoothing factor for trend
 
-/**
- * Clamp value between 0 and 1
- */
+// ============================================================
+// Mode-specific thresholds
+// ============================================================
+
+const MODE_CONFIG = {
+  gentle: {
+    tabSwitchThreshold: 15,    // switches before max penalty
+    idleThresholdMs: 45_000,   // 45s before idle penalty
+    typingBonus: 0.1,          // bonus for active typing
+    baseScore: 100,
+  },
+  normal: {
+    tabSwitchThreshold: 10,
+    idleThresholdMs: 30_000,
+    typingBonus: 0.15,
+    baseScore: 100,
+  },
+  strict: {
+    tabSwitchThreshold: 5,     // very sensitive
+    idleThresholdMs: 20_000,   // 20s = idle
+    typingBonus: 0.2,
+    baseScore: 100,
+  },
+};
+
+// ============================================================
+// Utility Functions
+// ============================================================
+
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
 
-/**
- * Clamp value between min and max
- */
 function clamp(x, min, max) {
   return Math.max(min, Math.min(max, x));
 }
 
-/**
- * Clean old entries from a timestamp array (keep only last WINDOW_MS)
- */
 export function pruneTimestamps(arr, now) {
   const cutoff = now - WINDOW_MS;
   return arr.filter((t) => t > cutoff);
 }
 
-/**
- * Clean old intervals from off-task time array
- */
-export function pruneIntervals(intervals, now) {
-  const cutoff = now - WINDOW_MS;
-  return intervals
-    .map((i) => ({
-      start: Math.max(i.start, cutoff),
-      end: i.end,
-    }))
-    .filter((i) => i.end > cutoff && i.end > i.start);
-}
+// ============================================================
+// Focus Score Computation
+// ============================================================
 
 /**
- * Sum total time from intervals
- */
-function sumIntervals(intervals) {
-  return intervals.reduce((sum, i) => sum + (i.end - i.start), 0);
-}
-
-/**
- * Compute focus score from signals
+ * Compute focus score from all signals
  * Returns 0-100 where 100 = fully focused
  */
-export function computeFocusScore(signals, now) {
-  // Prune to window
-  const tabSwitches = pruneTimestamps(signals.tabSwitches, now);
-  const offTaskIntervals = pruneIntervals(signals.offTaskTime, now);
+export function computeFocusScore(signals, settings, mode = 'normal') {
+  const now = Date.now();
+  const config = MODE_CONFIG[mode] || MODE_CONFIG.normal;
 
-  // Tab switch penalty: 10+ switches/min = very bad
-  const tabSwitchRate = tabSwitches.length; // per 60s
-  const tabPenalty = clamp01(tabSwitchRate / 10);
+  let score = config.baseScore;
+  const penalties = [];
+  const bonuses = [];
 
-  // Off-task penalty: time on doomscroll sites
-  const offTaskMs = sumIntervals(offTaskIntervals);
-  const offTaskPenalty = clamp01(offTaskMs / WINDOW_MS);
+  // ─────────────────────────────────────────────────────────
+  // 1. TAB SWITCHING PENALTY
+  // ─────────────────────────────────────────────────────────
+  const recentSwitches = pruneTimestamps(signals.tabSwitches || [], now);
+  const switchRate = recentSwitches.length;
+  const tabPenalty = clamp01(switchRate / config.tabSwitchThreshold) * 35;
+  score -= tabPenalty;
+  if (tabPenalty > 0) penalties.push({ type: 'tabSwitch', value: tabPenalty });
 
-  // Idle penalty: time since last activity
-  const idleMs = signals.lastActivity ? now - signals.lastActivity : 0;
-  const idlePenalty = clamp01(idleMs / WINDOW_MS);
+  // ─────────────────────────────────────────────────────────
+  // 2. SITE CATEGORY PENALTY/BONUS
+  // ─────────────────────────────────────────────────────────
+  const currentCategory = signals.currentCategory || 'neutral';
+  const categoryMultiplier = getCategoryPenalty(currentCategory, mode);
 
-  // Base score with penalties
-  let score = 100
-    - 40 * tabPenalty      // heavy penalty for tab switching
-    - 45 * offTaskPenalty  // heavy penalty for doomscrolling
-    - 15 * idlePenalty;    // light penalty for being idle
+  if (categoryMultiplier < 0) {
+    // Penalty - scale by how bad the category is
+    const sitePenalty = Math.abs(categoryMultiplier) * 50;
+    score -= sitePenalty;
+    penalties.push({ type: 'badSite', category: currentCategory, value: sitePenalty });
+  } else if (categoryMultiplier > 0) {
+    // Bonus for productive sites
+    const siteBonus = categoryMultiplier * 20;
+    score += siteBonus;
+    bonuses.push({ type: 'goodSite', category: currentCategory, value: siteBonus });
+  }
 
-  // Bonus for sustained on-task time
-  const onTaskMs = WINDOW_MS - offTaskMs;
-  const onTaskRatio = clamp01(onTaskMs / WINDOW_MS);
-  score += 10 * onTaskRatio;
+  // ─────────────────────────────────────────────────────────
+  // 3. IDLE PENALTY (no mouse/keyboard activity)
+  // ─────────────────────────────────────────────────────────
+  const lastActivity = Math.max(
+    signals.lastMouseMove || 0,
+    signals.lastKeyPress || 0
+  );
+  const idleMs = lastActivity > 0 ? now - lastActivity : 0;
 
-  return clamp(Math.round(score), 0, 100);
+  if (idleMs > config.idleThresholdMs) {
+    const idlePenalty = clamp01((idleMs - config.idleThresholdMs) / 60_000) * 20;
+    score -= idlePenalty;
+    penalties.push({ type: 'idle', value: idlePenalty });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 4. ACTIVE TYPING BONUS
+  // ─────────────────────────────────────────────────────────
+  if (signals.isActivelyTyping) {
+    const typingBonus = config.typingBonus * 15;
+    score += typingBonus;
+    bonuses.push({ type: 'typing', value: typingBonus });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 5. DOOMSCROLLING PENALTY
+  // ─────────────────────────────────────────────────────────
+  // Scrolling on a bad site = doomscrolling
+  const isBadSite = ['socialMedia', 'entertainment', 'games', 'blocked'].includes(currentCategory);
+
+  if (isBadSite && signals.scrollCount > 5) {
+    const doomPenalty = clamp01(signals.scrollCount / 20) * 25;
+    score -= doomPenalty;
+    penalties.push({ type: 'doomscroll', value: doomPenalty });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 6. PROLONGED BAD SITE PENALTY
+  // ─────────────────────────────────────────────────────────
+  // Extra penalty for spending lots of time on bad sites
+  const siteTime = signals.siteTime || {};
+  let badSiteTimeMs = 0;
+
+  for (const [hostname, data] of Object.entries(siteTime)) {
+    const cat = data.category;
+    if (['socialMedia', 'entertainment', 'games', 'blocked'].includes(cat)) {
+      badSiteTimeMs += data.totalMs || 0;
+    }
+  }
+
+  if (badSiteTimeMs > 30_000) { // More than 30s on bad sites
+    const prolongedPenalty = clamp01(badSiteTimeMs / 300_000) * 20; // Max at 5 min
+    score -= prolongedPenalty;
+    penalties.push({ type: 'prolongedBadSite', value: prolongedPenalty });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 7. STRICT MODE: EXTRA PENALTIES
+  // ─────────────────────────────────────────────────────────
+  if (mode === 'strict') {
+    // Any non-productive site gets a small penalty
+    if (currentCategory !== 'productive') {
+      score -= 5;
+    }
+
+    // Mouse not moving but not typing = distracted?
+    if (!signals.isActivelyTyping && idleMs > 10_000) {
+      score -= 5;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 8. VISION-BASED PENALTIES (from webcam detection)
+  // ─────────────────────────────────────────────────────────
+  if (signals.visionEnabled) {
+    // Face missing penalty - gradually increases
+    if (!signals.facePresent && signals.faceMissingMs > 10_000) {
+      // After 10 seconds of no face, start penalizing
+      const faceMissingPenalty = clamp01((signals.faceMissingMs - 10_000) / 60_000) * 25;
+      score -= faceMissingPenalty;
+      penalties.push({ type: 'faceAway', value: faceMissingPenalty });
+    }
+
+    // Looking away penalty
+    if (signals.lookingAway && signals.lookingAwayMs > 5_000) {
+      // After 5 seconds of looking away, start penalizing
+      const lookingAwayPenalty = clamp01((signals.lookingAwayMs - 5_000) / 30_000) * 15;
+      score -= lookingAwayPenalty;
+      penalties.push({ type: 'lookingAway', value: lookingAwayPenalty });
+    }
+
+    // Bonus for being visually focused
+    if (signals.facePresent && !signals.lookingAway && signals.visionAttentionScore > 0.7) {
+      const visionBonus = 5;
+      score += visionBonus;
+      bonuses.push({ type: 'visuallyFocused', value: visionBonus });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // FINAL SCORE
+  // ─────────────────────────────────────────────────────────
+  const finalScore = clamp(Math.round(score), 0, 100);
+
+  return {
+    score: finalScore,
+    penalties,
+    bonuses,
+    debug: {
+      switchRate,
+      currentCategory,
+      idleMs,
+      badSiteTimeMs,
+    },
+  };
 }
 
 /**
- * Update exponential moving average for trend tracking
+ * Simple score computation (returns just the number)
  */
+export function computeFocusScoreSimple(signals, settings, mode = 'normal') {
+  return computeFocusScore(signals, settings, mode).score;
+}
+
+// ============================================================
+// Trend Tracking
+// ============================================================
+
 export function updateEMA(currentEMA, newScore) {
   return EMA_ALPHA * newScore + (1 - EMA_ALPHA) * currentEMA;
 }
 
-/**
- * Calculate trend delta (how much focus changed recently)
- */
 export function computeTrendDelta(history, now) {
-  // Look at last 30 seconds of history
   const cutoff = now - 30_000;
   const recent = history.filter((h) => h.timestamp > cutoff);
 
@@ -103,32 +235,30 @@ export function computeTrendDelta(history, now) {
   return newest - oldest;
 }
 
-/**
- * Check if URL is on a doomscroll site
- */
-export function isDoomscrollSite(url, doomscrollSites) {
+// ============================================================
+// Site Detection Helpers
+// ============================================================
+
+export function isDoomscrollSite(url, settings) {
   if (!url) return false;
   try {
     const hostname = new URL(url).hostname;
-    return doomscrollSites.some((site) =>
-      hostname === site || hostname.endsWith('.' + site)
-    );
+    const category = categorizeSite(hostname, settings);
+    return ['socialMedia', 'entertainment', 'games', 'blocked'].includes(category);
   } catch {
     return false;
   }
 }
 
-/**
- * Check if URL is on a study site
- */
-export function isStudySite(url, studySites) {
+export function isProductiveSite(url, settings) {
   if (!url) return false;
   try {
     const hostname = new URL(url).hostname;
-    return studySites.some((site) =>
-      hostname === site || hostname.endsWith('.' + site)
-    );
+    const category = categorizeSite(hostname, settings);
+    return category === 'productive';
   } catch {
     return false;
   }
 }
+
+export { categorizeSite };

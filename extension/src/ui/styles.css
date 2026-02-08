@@ -1,4 +1,26 @@
-/* Lock In DJ - Popup Styles */
+/* FocusDJ - Popup Styles */
+/* Pink/Purple Dark Theme */
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a25;
+  --bg-elevated: #222230;
+
+  --accent-pink: #ff6b9d;
+  --accent-pink-dim: rgba(255, 107, 157, 0.25);
+  --accent-pink-glow: rgba(255, 107, 157, 0.15);
+  --accent-purple: #a855f7;
+  --accent-purple-dim: rgba(168, 85, 247, 0.25);
+
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --text-muted: #606070;
+
+  --border-color: #2a2a3a;
+
+  --gradient-pink-purple: linear-gradient(135deg, #ff6b9d 0%, #a855f7 100%);
+}
 
 * {
   box-sizing: border-box;
@@ -7,9 +29,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0f0f0f;
-  color: #e5e5e5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   min-width: 320px;
 }
 
@@ -30,9 +52,9 @@ body {
 }
 
 .header h1 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #1db954, #1ed760);
+  background: var(--gradient-pink-purple);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -40,15 +62,16 @@ body {
 
 .version {
   font-size: 10px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 /* Sections */
 .section {
-  background: #1a1a1a;
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
+  border: 1px solid var(--border-color);
 }
 
 /* Music */
@@ -57,7 +80,7 @@ body {
 }
 
 .music-status p {
-  color: #888;
+  color: var(--text-secondary);
   font-size: 13px;
   margin-bottom: 12px;
 }
@@ -74,11 +97,12 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .btn-ytmusic:hover {
   background: #cc0000;
+  transform: translateY(-1px);
 }
 
 .btn-ytmusic:disabled {
@@ -95,8 +119,9 @@ body {
 .album-art {
   width: 48px;
   height: 48px;
-  border-radius: 6px;
+  border-radius: 8px;
   object-fit: cover;
+  border: 1px solid var(--border-color);
 }
 
 .track-info {
@@ -110,11 +135,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-primary);
 }
 
 .artist-name {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -122,27 +148,30 @@ body {
 
 .playback-controls {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   margin-left: auto;
 }
 
 .control-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
-  background: #333;
-  color: #fff;
-  font-size: 12px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
 }
 
 .control-btn:hover {
-  background: #444;
+  background: var(--accent-pink-dim);
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
 }
 
 /* Focus Display */
@@ -167,13 +196,13 @@ body {
 
 .ring-bg {
   fill: none;
-  stroke: #333;
+  stroke: var(--bg-elevated);
   stroke-width: 8;
 }
 
 .ring-progress {
   fill: none;
-  stroke: #1db954;
+  stroke: var(--accent-pink);
   stroke-width: 8;
   stroke-linecap: round;
   stroke-dasharray: 283;
@@ -192,6 +221,10 @@ body {
 .focus-score-text span {
   font-size: 28px;
   font-weight: 700;
+  background: var(--gradient-pink-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .focus-label {
@@ -202,6 +235,7 @@ body {
 .focus-label span:first-child {
   font-size: 14px;
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .trend {
@@ -219,7 +253,46 @@ body {
 }
 
 .trend-stable {
-  color: #6b7280;
+  color: var(--text-muted);
+}
+
+/* Focus Details */
+.focus-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.current-site {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.penalty-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.penalty {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.bonus {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 /* Session Controls */
@@ -229,7 +302,7 @@ body {
 
 .hint {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 
@@ -241,11 +314,11 @@ body {
 
 .mode-btn {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #333;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   background: transparent;
-  color: #888;
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -253,19 +326,19 @@ body {
 }
 
 .mode-btn:hover {
-  border-color: #555;
-  color: #ccc;
+  border-color: var(--accent-pink-dim);
+  color: var(--text-primary);
 }
 
 .mode-btn.active {
-  border-color: #1db954;
-  background: rgba(29, 185, 84, 0.1);
-  color: #1db954;
+  border-color: var(--accent-pink);
+  background: var(--accent-pink-dim);
+  color: var(--accent-pink);
 }
 
 .btn {
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -273,14 +346,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #1db954, #1ed760);
+  background: var(--gradient-pink-purple);
   color: white;
   padding: 12px 24px;
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
 }
 
 .btn-large {
@@ -306,25 +379,93 @@ body {
 }
 
 .mode-badge {
-  background: rgba(29, 185, 84, 0.15);
-  color: #1db954;
-  padding: 4px 10px;
+  background: var(--accent-pink-dim);
+  color: var(--accent-pink);
+  padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
 }
 
 .session-time {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  background: var(--gradient-pink-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Pomodoro Display */
+.pomodoro-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--bg-primary);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.pomodoro-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pomodoro-phase {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-pink);
+}
+
+.pomodoro-phase.break {
+  color: var(--accent-purple);
+}
+
+.pomodoro-time {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--gradient-pink-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-pink-dim);
+  color: var(--accent-pink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--accent-pink);
+  color: white;
 }
 
 /* Intervention */
 .intervention-msg {
   text-align: center;
   font-size: 13px;
-  color: #f59e0b;
+  color: var(--accent-purple);
   animation: fadeIn 0.3s ease;
 }
 
@@ -333,10 +474,35 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Dashboard Button */
+#dashboard-section {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.btn-dashboard {
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--gradient-pink-purple);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dashboard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 24px rgba(255, 107, 157, 0.5);
+}
+
 /* Footer */
 .footer {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   gap: 12px;
   padding-top: 8px;
@@ -345,18 +511,29 @@ body {
 .btn-link {
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
   transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-link svg {
+  opacity: 0.7;
 }
 
 .btn-link:hover {
-  color: #999;
+  color: var(--accent-pink);
+}
+
+.btn-link:hover svg {
+  opacity: 1;
 }
 
 .divider {
-  color: #333;
+  color: var(--border-color);
 }
 
 /* Options Page Styles */
@@ -369,19 +546,24 @@ body {
 .options-container h1 {
   font-size: 24px;
   margin-bottom: 24px;
+  background: var(--gradient-pink-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .options-section {
-  background: #1a1a1a;
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
+  border: 1px solid var(--border-color);
 }
 
 .options-section h2 {
   font-size: 16px;
   margin-bottom: 16px;
-  color: #1db954;
+  color: var(--accent-pink);
 }
 
 .form-group {
@@ -391,7 +573,7 @@ body {
 .form-group label {
   display: block;
   font-size: 13px;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
@@ -399,17 +581,18 @@ body {
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #0f0f0f;
-  color: #e5e5e5;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #1db954;
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 0 3px var(--accent-pink-glow);
 }
 
 .form-group textarea {
@@ -442,9 +625,10 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #333;
+  background: var(--bg-elevated);
   border-radius: 24px;
   transition: 0.2s;
+  border: 1px solid var(--border-color);
 }
 
 .toggle-slider:before {
@@ -452,27 +636,29 @@ body {
   content: "";
   height: 18px;
   width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background: white;
+  left: 2px;
+  bottom: 2px;
+  background: var(--text-muted);
   border-radius: 50%;
   transition: 0.2s;
 }
 
 .toggle input:checked + .toggle-slider {
-  background: #1db954;
+  background: var(--accent-pink);
+  border-color: var(--accent-pink);
 }
 
 .toggle input:checked + .toggle-slider:before {
   transform: translateX(20px);
+  background: white;
 }
 
 .btn-save {
-  background: #1db954;
+  background: var(--gradient-pink-purple);
   color: white;
   padding: 12px 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -481,7 +667,7 @@ body {
 }
 
 .btn-save:hover {
-  background: #1ed760;
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
 }
 
 .playlist-selector {
@@ -492,10 +678,10 @@ body {
 
 .playlist-option {
   padding: 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   background: transparent;
-  color: #888;
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
@@ -503,13 +689,13 @@ body {
 }
 
 .playlist-option:hover {
-  border-color: #555;
+  border-color: var(--accent-pink-dim);
 }
 
 .playlist-option.selected {
-  border-color: #1db954;
-  background: rgba(29, 185, 84, 0.1);
-  color: #1db954;
+  border-color: var(--accent-pink);
+  background: var(--accent-pink-dim);
+  color: var(--accent-pink);
 }
 
 .playlist-name {
@@ -520,5 +706,5 @@ body {
 
 .playlist-tracks {
   font-size: 10px;
-  color: #666;
+  color: var(--text-muted);
 }

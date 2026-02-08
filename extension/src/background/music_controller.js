@@ -117,6 +117,16 @@ export async function applyIntervention(interventionType) {
     case INTERVENTIONS.PATTERN_BREAK:
       return patternBreak();
 
+    case INTERVENTIONS.DUCK_VOLUME:
+      return duckVolume();
+
+    case INTERVENTIONS.WHITE_NOISE:
+      return whiteNoiseBurst();
+
+    case INTERVENTIONS.VIOLA_POPUP:
+      // Handled by service worker directly
+      return { success: true, handled: 'service_worker' };
+
     case INTERVENTIONS.NUCLEAR:
       return nuclear();
 
@@ -150,6 +160,31 @@ async function patternBreak(duration = 3000) {
 async function nuclear() {
   const result = await sendToYTMusic('NUCLEAR');
   console.log('[Music Controller] Nuclear result:', result);
+  return result;
+}
+
+/**
+ * DUCK_VOLUME: Lower volume to reduce distraction
+ */
+async function duckVolume(level = 30) {
+  const result = await sendToYTMusic('DUCK_VOLUME', { level });
+  console.log('[Music Controller] Duck volume result:', result);
+  return result;
+}
+
+/**
+ * Restore volume after ducking
+ */
+export async function restoreVolume() {
+  return sendToYTMusic('RESTORE_VOLUME');
+}
+
+/**
+ * WHITE_NOISE: Burst of white noise to grab attention
+ */
+async function whiteNoiseBurst(duration = 2000) {
+  const result = await sendToYTMusic('WHITE_NOISE', { duration });
+  console.log('[Music Controller] White noise result:', result);
   return result;
 }
 

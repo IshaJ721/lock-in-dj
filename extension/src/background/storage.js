@@ -1,5 +1,75 @@
 // Storage wrapper for chrome.storage.local
 
+// ============================================================
+// Site Categories (like Apple Screen Time)
+// ============================================================
+
+export const SITE_CATEGORIES = {
+  // Productive - gives bonus
+  productive: [
+    // Music (for focus)
+    'music.youtube.com',
+    // Docs & Notes
+    'docs.google.com', 'notion.so', 'overleaf.com', 'quip.com', 'dropbox.paper.com',
+    'evernote.com', 'onenote.com', 'bear.app', 'roamresearch.com', 'obsidian.md',
+    // Code & Dev
+    'github.com', 'gitlab.com', 'bitbucket.org', 'stackoverflow.com', 'stackexchange.com',
+    'codepen.io', 'codesandbox.io', 'replit.com', 'jsfiddle.net', 'leetcode.com',
+    'hackerrank.com', 'codewars.com', 'exercism.org',
+    // Learning
+    'canvas.instructure.com', 'blackboard.com', 'coursera.org', 'edx.org', 'udemy.com',
+    'khanacademy.org', 'brilliant.org', 'duolingo.com', 'quizlet.com', 'chegg.com',
+    // Research
+    'scholar.google.com', 'jstor.org', 'pubmed.ncbi.nlm.nih.gov', 'arxiv.org',
+    'researchgate.net', 'academia.edu', 'wikipedia.org',
+    // Work tools
+    'slack.com', 'linear.app', 'asana.com', 'trello.com', 'monday.com', 'jira.atlassian.com',
+    'figma.com', 'miro.com', 'lucidchart.com',
+  ],
+
+  // Social Media - heavy penalty
+  socialMedia: [
+    'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'threads.net',
+    'snapchat.com', 'tiktok.com', 'linkedin.com', 'pinterest.com', 'tumblr.com',
+    'reddit.com', 'discord.com', 'twitch.tv', 'bsky.app', 'mastodon.social',
+  ],
+
+  // Entertainment - heavy penalty
+  entertainment: [
+    'youtube.com', 'netflix.com', 'hulu.com', 'disneyplus.com', 'hbomax.com',
+    'primevideo.com', 'peacocktv.com', 'crunchyroll.com', 'funimation.com',
+    'twitch.tv', 'kick.com', 'rumble.com', 'dailymotion.com', 'vimeo.com',
+    'spotify.com', 'soundcloud.com', 'pandora.com',
+  ],
+
+  // Games - heavy penalty
+  games: [
+    'roblox.com', 'minecraft.net', 'steampowered.com', 'epicgames.com',
+    'ea.com', 'battle.net', 'origin.com', 'gog.com', 'itch.io',
+    'poki.com', 'coolmathgames.com', 'kongregate.com', 'addictinggames.com',
+    'crazygames.com', 'y8.com', 'miniclip.com', 'games.yahoo.com',
+    'chess.com', 'lichess.org', 'poker', 'casino',
+  ],
+
+  // Shopping - moderate penalty
+  shopping: [
+    'amazon.com', 'ebay.com', 'walmart.com', 'target.com', 'bestbuy.com',
+    'etsy.com', 'aliexpress.com', 'wish.com', 'shein.com', 'asos.com',
+    'zappos.com', 'nordstrom.com', 'macys.com', 'nike.com', 'adidas.com',
+  ],
+
+  // News - light penalty (can be productive but often isn't)
+  news: [
+    'cnn.com', 'foxnews.com', 'msnbc.com', 'bbc.com', 'nytimes.com',
+    'washingtonpost.com', 'theguardian.com', 'reuters.com', 'apnews.com',
+    'huffpost.com', 'buzzfeed.com', 'vice.com', 'vox.com', 'axios.com',
+  ],
+};
+
+// ============================================================
+// Default State
+// ============================================================
+
 const DEFAULT_STATE = {
   // Session state
   session: {
@@ -11,21 +81,44 @@ const DEFAULT_STATE = {
 
   // Rolling signals (last 60s window)
   signals: {
-    tabSwitches: [],      // timestamps of tab switches
-    offTaskTime: [],      // { start, end } intervals on doomscroll sites
-    activeTime: 0,        // ms active in current window
-    lastActivity: null,   // timestamp of last activity
+    tabSwitches: [],           // timestamps of tab switches
+    siteTime: {},              // { hostname: { category, totalMs, lastStart } }
+    currentSite: null,         // current hostname
+    currentCategory: null,     // current site category
+
+    // Activity signals from content script
+    lastMouseMove: null,
+    lastKeyPress: null,
+    lastScroll: null,
+    keyPressCount: 0,
+    scrollCount: 0,
+    isIdle: false,
+    isActivelyTyping: false,
+    isDoomscrolling: false,    // scrolling on bad site
+
+    // Vision signals from camera.html
+    visionEnabled: false,      // is camera detection active
+    facePresent: false,        // is face detected
+    lookingAway: false,        // is user looking away
+    visionAttentionScore: 0,   // 0-1 attention score from vision
+    faceMissingMs: 0,          // time face has been missing
+    lookingAwayMs: 0,          // time user has been looking away
   },
 
   // Computed metrics
   metrics: {
     focusScore: 100,
-    focusTrend: 100,      // EMA
-    trendDelta: 0,        // change over last 30s
+    focusTrend: 100,           // EMA
+    trendDelta: 0,             // change over last 30s
+
+    // Screen Time style breakdown
+    productiveTime: 0,
+    unproductiveTime: 0,
+    neutralTime: 0,
   },
 
   // Last intervention for feedback loop
-  lastIntervention: null, // { type, appliedAt, preScore }
+  lastIntervention: null,      // { type, appliedAt, preScore }
 
   // Bandit policy (what works for this user)
   policy: {
@@ -39,16 +132,26 @@ const DEFAULT_STATE = {
 
   // User settings
   settings: {
-    studySites: ['docs.google.com', 'notion.so', 'overleaf.com', 'github.com', 'stackoverflow.com', 'canvas.instructure.com'],
-    doomscrollSites: ['twitter.com', 'x.com', 'instagram.com', 'tiktok.com', 'reddit.com', 'facebook.com'],
+    // Custom overrides (in addition to SITE_CATEGORIES)
+    customProductive: [],      // user-added productive sites
+    customBlocked: [],         // user-added blocked sites
+
     nuclearEnabled: false,
     pomodoroEnabled: false,
-    pomodoroWork: 25,     // minutes
+    pomodoroWork: 25,
     pomodoroBreak: 5,
-    tabSensitivity: 'normal', // 'low' | 'normal' | 'high'
+
+    // Doomscroll detection
+    doomscrollThreshold: 15,   // seconds before alarm
+    customDoomscrollSites: [], // user-added doomscroll sites
+
+    // Vision detection
+    visionEnabled: false,      // is vision detection opt-in enabled
+    visionFaceThreshold: 10,   // seconds before face-missing penalty
+    visionGazeThreshold: 5,    // seconds before looking-away penalty
   },
 
-  // Music state (YouTube Music controlled via content script)
+  // Music state
   music: {
     lastKnownTrack: null,
     lastKnownPlaying: false,
@@ -56,7 +159,86 @@ const DEFAULT_STATE = {
 
   // History for dashboard
   history: [],
+
+  // Screen Time style daily stats
+  dailyStats: {
+    date: null,
+    siteBreakdown: {},         // { hostname: totalMs }
+    categoryBreakdown: {},     // { category: totalMs }
+    focusScoreAvg: 0,
+    interventionCount: 0,
+  },
 };
+
+// ============================================================
+// Helper: Categorize a hostname
+// ============================================================
+
+export function categorizeSite(hostname, settings = {}) {
+  if (!hostname) return 'neutral';
+
+  // Check custom overrides first
+  if (settings.customBlocked?.some(s => hostname.includes(s))) {
+    return 'blocked';
+  }
+  if (settings.customProductive?.some(s => hostname.includes(s))) {
+    return 'productive';
+  }
+
+  // Check built-in categories
+  for (const [category, sites] of Object.entries(SITE_CATEGORIES)) {
+    if (sites.some(s => hostname.includes(s) || hostname.endsWith('.' + s))) {
+      return category;
+    }
+  }
+
+  return 'neutral';
+}
+
+/**
+ * Get penalty multiplier for a category
+ * Returns: negative = penalty, positive = bonus, 0 = neutral
+ */
+export function getCategoryPenalty(category, mode = 'normal') {
+  const penalties = {
+    gentle: {
+      productive: 0.15,      // bonus
+      socialMedia: -0.3,
+      entertainment: -0.25,
+      games: -0.35,
+      shopping: -0.1,
+      news: -0.05,
+      blocked: -0.5,
+      neutral: 0,
+    },
+    normal: {
+      productive: 0.2,       // bonus
+      socialMedia: -0.5,
+      entertainment: -0.4,
+      games: -0.6,
+      shopping: -0.2,
+      news: -0.1,
+      blocked: -0.7,
+      neutral: 0,
+    },
+    strict: {
+      productive: 0.25,      // bonus
+      socialMedia: -0.8,
+      entertainment: -0.7,
+      games: -1.0,           // instant max penalty
+      shopping: -0.4,
+      news: -0.2,
+      blocked: -1.0,
+      neutral: -0.05,        // even neutral hurts in strict
+    },
+  };
+
+  return penalties[mode]?.[category] ?? 0;
+}
+
+// ============================================================
+// Storage Functions
+// ============================================================
 
 export async function loadState() {
   const result = await chrome.storage.local.get('state');
@@ -83,7 +265,6 @@ export async function resetState() {
   return structuredClone(DEFAULT_STATE);
 }
 
-// Convenience: get just settings
 export async function getSettings() {
   const state = await loadState();
   return state.settings;

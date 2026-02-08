@@ -1,17 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Lock In DJ",
+  "name": "FocusDJ",
   "version": "0.1.0",
-  "description": "Real-time focus detection with adaptive music intervention",
+  "description": "Real-time focus detection with adaptive music intervention - powered by Viola AI",
   "action": {
-    "default_popup": "src/ui/popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
+    "default_popup": "src/ui/popup.html"
   },
-  "options_page": "src/ui/options.html",
+  "options_page": "src/dashboard/index.html",
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*"
+    ]
+  },
   "background": {
     "service_worker": "src/background/service_worker.js",
     "type": "module"
@@ -21,22 +22,23 @@
     "storage",
     "alarms",
     "idle",
-    "scripting"
+    "scripting",
+    "offscreen"
   ],
   "host_permissions": [
-    "https://music.youtube.com/*",
-    "https://www.youtube.com/*"
+    "<all_urls>"
   ],
   "content_scripts": [
     {
       "matches": ["https://music.youtube.com/*"],
       "js": ["src/content/ytm_controller.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/activity_tracker.js", "src/content/viola_popup.js"],
+      "run_at": "document_idle",
+      "exclude_matches": ["https://music.youtube.com/*"]
     }
-  ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+  ]
 }

@@ -1,7 +1,7 @@
 // YouTube Music Controller - Content Script
 // Injected into music.youtube.com to control playback
 
-console.log('[Lock In DJ] YouTube Music controller loaded');
+console.log('[FocusDJ] YouTube Music controller loaded');
 
 // ============================================================
 // DOM Selectors (YouTube Music specific)
@@ -81,7 +81,7 @@ function clickElement(selector) {
     el.click();
     return true;
   }
-  console.warn(`[Lock In DJ] Element not found: ${selector}`);
+  console.warn(`[FocusDJ] Element not found: ${selector}`);
   return false;
 }
 
@@ -323,7 +323,7 @@ async function patternBreak(durationMs = 3000) {
     pause();
 
     // Visual indicator could be added here
-    console.log(`[Lock In DJ] Pattern break for ${durationMs}ms`);
+    console.log(`[FocusDJ] Pattern break for ${durationMs}ms`);
 
     await new Promise(resolve => setTimeout(resolve, durationMs));
 
@@ -356,11 +356,139 @@ async function nuclear() {
 }
 
 // ============================================================
+// White Noise Generator
+// ============================================================
+
+let whiteNoiseContext = null;
+let whiteNoiseNode = null;
+let whiteNoiseGain = null;
+
+/**
+ * Start white noise (uses Web Audio API)
+ */
+function startWhiteNoise(volume = 0.3, durationMs = 5000) {
+  try {
+    // Create audio context
+    whiteNoiseContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Create buffer with white noise
+    const bufferSize = 2 * whiteNoiseContext.sampleRate;
+    const noiseBuffer = whiteNoiseContext.createBuffer(1, bufferSize, whiteNoiseContext.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+
+    // Create nodes
+    whiteNoiseNode = whiteNoiseContext.createBufferSource();
+    whiteNoiseNode.buffer = noiseBuffer;
+    whiteNoiseNode.loop = true;
+
+    whiteNoiseGain = whiteNoiseContext.createGain();
+    whiteNoiseGain.gain.value = volume;
+
+    // Connect
+    whiteNoiseNode.connect(whiteNoiseGain);
+    whiteNoiseGain.connect(whiteNoiseContext.destination);
+
+    // Start
+    whiteNoiseNode.start();
+
+    // Auto-stop after duration
+    if (durationMs > 0) {
+      setTimeout(() => stopWhiteNoise(), durationMs);
+    }
+
+    console.log('[FocusDJ] White noise started');
+    return { success: true };
+  } catch (err) {
+    console.error('[FocusDJ] Failed to start white noise:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Stop white noise
+ */
+function stopWhiteNoise() {
+  try {
+    if (whiteNoiseNode) {
+      whiteNoiseNode.stop();
+      whiteNoiseNode.disconnect();
+    }
+    if (whiteNoiseGain) {
+      whiteNoiseGain.disconnect();
+    }
+    if (whiteNoiseContext) {
+      whiteNoiseContext.close();
+    }
+    whiteNoiseNode = null;
+    whiteNoiseGain = null;
+    whiteNoiseContext = null;
+    console.log('[FocusDJ] White noise stopped');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * White noise burst - brief attention-grabber
+ */
+async function whiteNoiseBurst(durationMs = 2000) {
+  const video = getVideo();
+  const wasPlaying = video && !video.paused;
+  const previousVolume = getVolume();
+
+  // Lower music volume
+  setVolume(20);
+
+  // Start white noise
+  startWhiteNoise(0.4, durationMs);
+
+  // Wait for burst to complete
+  await new Promise(resolve => setTimeout(resolve, durationMs + 500));
+
+  // Restore music volume
+  setVolume(previousVolume);
+
+  return { success: true, wasPlaying };
+}
+
+// ============================================================
+// Volume Duck (lower volume temporarily)
+// ============================================================
+
+let originalVolume = null;
+
+/**
+ * Duck volume (lower it for focus)
+ */
+function duckVolume(targetVolume = 30) {
+  originalVolume = getVolume();
+  setVolume(targetVolume);
+  return { success: true, originalVolume };
+}
+
+/**
+ * Restore volume after ducking
+ */
+function restoreVolume() {
+  if (originalVolume !== null) {
+    setVolume(originalVolume);
+    originalVolume = null;
+    return { success: true };
+  }
+  return { success: false, error: 'No original volume saved' };
+}
+
+// ============================================================
 // Message Handling (from service worker)
 // ============================================================
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[Lock In DJ] Received message:', message);
+  console.log('[FocusDJ] Received message:', message);
 
   let result = { success: false };
 
@@ -441,6 +569,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         result = { success: true };
         break;
 
+      // White noise
+      case 'WHITE_NOISE':
+        whiteNoiseBurst(message.duration || 2000);
+        result = { success: true, async: true };
+        break;
+      case 'WHITE_NOISE_START':
+        result = startWhiteNoise(message.volume || 0.3, message.duration || 0);
+        break;
+      case 'WHITE_NOISE_STOP':
+        result = stopWhiteNoise();
+        break;
+
+      // Volume duck
+      case 'DUCK_VOLUME':
+        result = duckVolume(message.level || 30);
+        break;
+      case 'RESTORE_VOLUME':
+        result = restoreVolume();
+        break;
+
       // Ping (for checking if tab is active)
       case 'PING':
         result = { success: true, playing: isPlaying() };
@@ -450,7 +598,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         result = { success: false, error: 'Unknown action' };
     }
   } catch (err) {
-    console.error('[Lock In DJ] Error handling message:', err);
+    console.error('[FocusDJ] Error handling message:', err);
     result = { success: false, error: err.message };
   }
 
@@ -465,4 +613,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Notify service worker that we're ready
 chrome.runtime.sendMessage({ type: 'YTM_READY', url: window.location.href });
 
-console.log('[Lock In DJ] YouTube Music controller ready');
+console.log('[FocusDJ] YouTube Music controller ready');

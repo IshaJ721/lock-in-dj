@@ -1,0 +1,58 @@
+.waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 40px;
+}
+
+.waveform-bar {
+  width: 4px;
+  height: 20px;
+  background: var(--gradient-pink-purple);
+  border-radius: 2px;
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% {
+    height: 10px;
+    opacity: 0.4;
+  }
+  50% {
+    height: 36px;
+    opacity: 1;
+  }
+}
+
+/* Larger variant */
+.waveform-lg .waveform-bar {
+  width: 6px;
+  height: 30px;
+}
+
+.waveform-lg {
+  height: 60px;
+  gap: 6px;
+}
+
+@keyframes wave-lg {
+  0%, 100% {
+    height: 15px;
+    opacity: 0.4;
+  }
+  50% {
+    height: 50px;
+    opacity: 1;
+  }
+}
+
+.waveform-lg .waveform-bar {
+  animation: wave-lg 1.2s ease-in-out infinite;
+}
+
+/* Subtle variant */
+.waveform-subtle .waveform-bar {
+  background: var(--text-muted);
+  opacity: 0.3;
+}

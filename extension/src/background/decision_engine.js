@@ -6,26 +6,40 @@
 export const INTERVENTIONS = {
   BOOST_ENERGY: 'BOOST_ENERGY',       // Skip to higher energy track
   SWITCH_PLAYLIST: 'SWITCH_PLAYLIST', // Change to focus playlist
-  PATTERN_BREAK: 'PATTERN_BREAK',     // Short audio cue
-  NUCLEAR: 'NUCLEAR',                 // Annoying sound for doomscrolling
+  PATTERN_BREAK: 'PATTERN_BREAK',     // Short pause then resume
+  DUCK_VOLUME: 'DUCK_VOLUME',         // Lower volume to reduce distraction
+  WHITE_NOISE: 'WHITE_NOISE',         // White noise burst for attention
+  VIOLA_POPUP: 'VIOLA_POPUP',         // Show Viola chatbot popup
+  NUCLEAR: 'NUCLEAR',                 // Max volume blast for doomscrolling
 };
 
 /**
  * Cooldown periods by mode (ms)
+ * Stricter modes = more frequent interventions
  */
 const COOLDOWNS = {
-  gentle: 45_000,  // 45s
+  gentle: 60_000,  // 60s - more patience
   normal: 30_000,  // 30s
-  strict: 15_000,  // 15s
+  strict: 10_000,  // 10s - rapid response
 };
 
 /**
  * Focus thresholds by mode (trigger intervention if below)
+ * Higher = more sensitive
  */
 const THRESHOLDS = {
-  gentle: 50,
-  normal: 60,
-  strict: 70,
+  gentle: 45,   // lenient
+  normal: 60,   // moderate
+  strict: 75,   // very sensitive - intervene early
+};
+
+/**
+ * Trend sensitivity by mode (trigger if dropping faster than this)
+ */
+const TREND_THRESHOLDS = {
+  gentle: -15,  // only intervene on rapid drops
+  normal: -10,
+  strict: -5,   // intervene on any noticeable drop
 };
 
 /**
@@ -51,9 +65,15 @@ export function shouldIntervene(state, now) {
     return { should: true, reason: 'low_focus' };
   }
 
-  // Focus is dropping rapidly (more than 10 points in 30s)
-  if (metrics.trendDelta < -10) {
+  // Focus is dropping (mode-specific sensitivity)
+  const trendThreshold = TREND_THRESHOLDS[session.mode] || -10;
+  if (metrics.trendDelta < trendThreshold) {
     return { should: true, reason: 'dropping_focus' };
+  }
+
+  // Strict mode: intervene on any doomscrolling regardless of score
+  if (session.mode === 'strict' && state.signals?.isDoomscrolling) {
+    return { should: true, reason: 'doomscrolling' };
   }
 
   return { should: false, reason: 'focused' };
@@ -89,17 +109,47 @@ export function selectArmUCB(policy, excludeNuclear = true) {
 
 /**
  * Select intervention based on context
+ * Escalates if previous interventions didn't work
  */
 export function selectIntervention(state, isDoomscrolling) {
-  const { session, policy, settings } = state;
+  const { session, policy, settings, lastIntervention } = state;
+
+  // Check if we're escalating (previous intervention didn't help)
+  const isEscalating = lastIntervention &&
+    (Date.now() - lastIntervention.appliedAt < 60000) && // Within last minute
+    lastIntervention.type !== INTERVENTIONS.VIOLA_POPUP &&
+    lastIntervention.type !== INTERVENTIONS.NUCLEAR;
 
   // Nuclear only for doomscrolling in strict mode with it enabled
   if (isDoomscrolling && session.mode === 'strict' && settings.nuclearEnabled) {
     return INTERVENTIONS.NUCLEAR;
   }
 
+  // If escalating and still distracted, show Viola popup
+  if (isEscalating && state.metrics.focusScore < 50) {
+    return INTERVENTIONS.VIOLA_POPUP;
+  }
+
+  // White noise for severe distraction
+  if (state.metrics.focusScore < 30 && isDoomscrolling) {
+    return INTERVENTIONS.WHITE_NOISE;
+  }
+
   // Otherwise use bandit to select best intervention
   return selectArmUCB(policy, true);
+}
+
+/**
+ * Get escalation level based on recent interventions
+ */
+export function getEscalationLevel(state) {
+  const recentInterventions = state.history
+    .filter(h => h.intervention && (Date.now() - h.timestamp) < 300000) // Last 5 min
+    .length;
+
+  if (recentInterventions >= 4) return 'high';
+  if (recentInterventions >= 2) return 'medium';
+  return 'low';
 }
 
 /**

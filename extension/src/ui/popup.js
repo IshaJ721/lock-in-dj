@@ -23,6 +23,9 @@ const elements = {
   focusRing: $('focus-ring'),
   focusStatus: $('focus-status'),
   focusTrend: $('focus-trend'),
+  focusDetails: $('focus-details'),
+  currentSite: $('current-site'),
+  penaltyList: $('penalty-list'),
 
   // Session
   sessionInactive: $('session-inactive'),
@@ -33,12 +36,20 @@ const elements = {
   sessionTime: $('session-time'),
   modeBtns: document.querySelectorAll('.mode-btn'),
 
+  // Pomodoro
+  pomodoroSection: $('pomodoro-section'),
+  pomodoroPhase: $('pomodoro-phase'),
+  pomodoroTime: $('pomodoro-time'),
+  pomodoroToggle: $('pomodoro-toggle'),
+
   // Intervention
   interventionSection: $('intervention-section'),
   lastIntervention: $('last-intervention'),
 
   // Footer
-  openOptions: $('open-options'),
+  openDashboard: $('open-dashboard'),
+  openCamera: $('open-camera'),
+  cameraStatus: $('camera-status'),
   toggleNuclear: $('toggle-nuclear'),
   nuclearStatus: $('nuclear-status'),
 };
@@ -127,7 +138,7 @@ elements.nextBtn?.addEventListener('click', async () => {
 // Focus Display
 // ============================================================
 
-function updateFocusDisplay(score, trend, trendDelta) {
+function updateFocusDisplay(score, trend, trendDelta, details = {}) {
   // Update score text
   elements.focusScore.textContent = score;
 
@@ -136,14 +147,14 @@ function updateFocusDisplay(score, trend, trendDelta) {
   const offset = circumference - (score / 100) * circumference;
   elements.focusRing.style.strokeDashoffset = offset;
 
-  // Color based on score
+  // Color based on score - pink/purple theme
   let color;
   if (score >= 70) {
-    color = '#10b981'; // green
+    color = '#ff6b9d'; // pink - focused
   } else if (score >= 50) {
-    color = '#f59e0b'; // amber
+    color = '#a855f7'; // purple - moderate
   } else {
-    color = '#ef4444'; // red
+    color = '#ef4444'; // red - unfocused
   }
   elements.focusRing.style.stroke = color;
 
@@ -168,6 +179,79 @@ function updateFocusDisplay(score, trend, trendDelta) {
   } else {
     elements.focusTrend.textContent = '→';
     elements.focusTrend.className = 'trend trend-stable';
+  }
+
+  // Show details (current site + penalties)
+  if (details.currentSite || details.penalties?.length) {
+    elements.focusDetails.classList.remove('hidden');
+
+    // Current site with category
+    if (details.currentSite) {
+      const categoryColors = {
+        productive: '#ff6b9d',  // pink
+        socialMedia: '#ef4444',
+        entertainment: '#a855f7', // purple
+        games: '#ef4444',
+        shopping: '#a855f7',
+        news: '#6b7280',
+        blocked: '#dc2626',
+        neutral: '#6b7280',
+      };
+      const categoryLabels = {
+        productive: 'Productive',
+        socialMedia: 'Social Media',
+        entertainment: 'Entertainment',
+        games: 'Games',
+        shopping: 'Shopping',
+        news: 'News',
+        blocked: 'Blocked',
+        neutral: 'Neutral',
+      };
+      const cat = details.currentCategory || 'neutral';
+      const color = categoryColors[cat] || '#6b7280';
+      const label = categoryLabels[cat] || 'Unknown';
+      elements.currentSite.innerHTML = `<span style="color: ${color}">${label}</span>: ${details.currentSite}`;
+    } else {
+      elements.currentSite.textContent = '';
+    }
+
+    // Penalties/bonuses
+    const items = [];
+    if (details.penalties) {
+      details.penalties.forEach((p) => {
+        items.push(`<span class="penalty">-${Math.round(p.value)} ${formatPenaltyType(p.type)}</span>`);
+      });
+    }
+    if (details.bonuses) {
+      details.bonuses.forEach((b) => {
+        items.push(`<span class="bonus">+${Math.round(b.value)} ${formatBonusType(b.type)}</span>`);
+      });
+    }
+    elements.penaltyList.innerHTML = items.join(' ');
+  } else {
+    elements.focusDetails.classList.add('hidden');
+  }
+}
+
+function formatPenaltyType(type) {
+  switch (type) {
+    case 'tabSwitch': return 'tab switching';
+    case 'badSite': return 'unproductive site';
+    case 'idle': return 'idle';
+    case 'doomscroll': return 'doomscrolling';
+    case 'prolongedBadSite': return 'time wasting';
+    case 'faceAway': return 'away from screen';
+    case 'lookingAway': return 'looking away';
+    default: return type;
+  }
+}
+
+function formatBonusType(type) {
+  switch (type) {
+    case 'goodSite': return 'productive';
+    case 'typing': return 'active typing';
+    case 'visuallyFocused': return 'visually focused';
+    default: return type;
   }
 }
 
@@ -232,11 +316,68 @@ function updateSessionTime() {
 }
 
 // ============================================================
-// Footer
+// Pomodoro Controls
 // ============================================================
 
-elements.openOptions.addEventListener('click', () => {
-  chrome.runtime.openOptionsPage();
+let pomodoroActive = false;
+
+elements.pomodoroToggle?.addEventListener('click', async () => {
+  if (pomodoroActive) {
+    await chrome.runtime.sendMessage({ type: 'STOP_POMODORO' });
+    pomodoroActive = false;
+    elements.pomodoroToggle.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+    `;
+  } else {
+    await chrome.runtime.sendMessage({ type: 'START_POMODORO' });
+    pomodoroActive = true;
+    elements.pomodoroToggle.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+        <rect x="6" y="4" width="4" height="16"/>
+        <rect x="14" y="4" width="4" height="16"/>
+      </svg>
+    `;
+  }
+});
+
+function updatePomodoroDisplay(status) {
+  if (!status || !status.active) {
+    elements.pomodoroSection?.classList.add('hidden');
+    return;
+  }
+
+  elements.pomodoroSection?.classList.remove('hidden');
+
+  const mins = Math.floor(status.remaining / 60);
+  const secs = status.remaining % 60;
+  elements.pomodoroTime.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+  elements.pomodoroPhase.textContent = status.phase === 'study' ? 'Focus' : 'Break';
+  elements.pomodoroPhase.className = `pomodoro-phase ${status.phase === 'break' ? 'break' : ''}`;
+
+  pomodoroActive = true;
+  elements.pomodoroToggle.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+      <rect x="6" y="4" width="4" height="16"/>
+      <rect x="14" y="4" width="4" height="16"/>
+    </svg>
+  `;
+}
+
+// ============================================================
+// Dashboard
+// ============================================================
+
+elements.openDashboard.addEventListener('click', () => {
+  // Open dashboard in a new tab for better experience
+  chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
+});
+
+elements.openCamera?.addEventListener('click', () => {
+  // Open camera detection page
+  chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/camera.html') });
 });
 
 elements.toggleNuclear.addEventListener('click', async () => {
@@ -258,7 +399,12 @@ elements.toggleNuclear.addEventListener('click', async () => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'STATE_UPDATE') {
-    updateFocusDisplay(message.focusScore, message.focusTrend, message.trendDelta);
+    updateFocusDisplay(message.focusScore, message.focusTrend, message.trendDelta, {
+      currentSite: message.currentSite,
+      currentCategory: message.currentCategory,
+      penalties: message.penalties,
+      bonuses: message.bonuses,
+    });
 
     // Update music connection status
     if (message.musicAvailable) {
@@ -273,6 +419,10 @@ chrome.runtime.onMessage.addListener((message) => {
     setTimeout(() => {
       elements.interventionSection.classList.add('hidden');
     }, 5000);
+  }
+
+  if (message.type === 'POMODORO_TICK') {
+    updatePomodoroDisplay(message);
   }
 });
 
@@ -300,7 +450,21 @@ async function init() {
     });
 
     showActiveSession();
-    updateFocusDisplay(state.metrics.focusScore, state.metrics.focusTrend, state.metrics.trendDelta);
+    updateFocusDisplay(state.metrics.focusScore, state.metrics.focusTrend, state.metrics.trendDelta, {
+      currentSite: state.signals?.currentSite,
+      currentCategory: state.signals?.currentCategory,
+      penalties: state.metrics?.penalties,
+      bonuses: state.metrics?.bonuses,
+    });
+
+    // Check pomodoro status
+    const pomodoroStatus = await chrome.runtime.sendMessage({ type: 'GET_POMODORO_STATUS' });
+    if (pomodoroStatus?.active) {
+      updatePomodoroDisplay(pomodoroStatus);
+    } else if (state.settings?.pomodoroEnabled) {
+      // Show pomodoro section but not active
+      elements.pomodoroSection?.classList.remove('hidden');
+    }
   }
 
   // Periodic updates

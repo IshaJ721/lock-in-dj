@@ -1,0 +1,68 @@
+.chip-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 100px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chip:hover {
+  border-color: var(--accent-pink-dim);
+  color: var(--text-primary);
+}
+
+.chip-selected {
+  background: var(--accent-pink-dim);
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
+}
+
+.chip-selected:hover {
+  background: var(--accent-pink);
+  color: white;
+}
+
+.chip-check {
+  width: 14px;
+  height: 14px;
+}
+
+/* Tag Input Variant */
+.chip-removable {
+  padding-right: 8px;
+}
+
+.chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  margin-left: 4px;
+  transition: background var(--transition-fast);
+}
+
+.chip-remove:hover {
+  background: var(--accent-pink);
+}
+
+.chip-remove svg {
+  width: 10px;
+  height: 10px;
+}

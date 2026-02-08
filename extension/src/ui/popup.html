@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lock In DJ</title>
+  <title>FocusDJ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="popup">
     <!-- Header -->
     <header class="header">
-      <h1>Lock In DJ</h1>
+      <h1>FocusDJ</h1>
       <span class="version">v0.1</span>
     </header>
 
@@ -58,6 +61,11 @@
           <span id="focus-trend" class="trend"></span>
         </div>
       </div>
+      <!-- Current Site & Penalties -->
+      <div id="focus-details" class="focus-details hidden">
+        <div id="current-site" class="current-site"></div>
+        <div id="penalty-list" class="penalty-list"></div>
+      </div>
     </div>
 
     <!-- Session Controls -->
@@ -78,6 +86,20 @@
           <span id="session-mode" class="mode-badge">Normal</span>
           <span id="session-time" class="session-time">00:00</span>
         </div>
+        <!-- Pomodoro Timer -->
+        <div id="pomodoro-section" class="pomodoro-display hidden">
+          <div class="pomodoro-timer">
+            <span id="pomodoro-phase" class="pomodoro-phase">Focus</span>
+            <span id="pomodoro-time" class="pomodoro-time">25:00</span>
+          </div>
+          <div class="pomodoro-controls">
+            <button id="pomodoro-toggle" class="btn-icon" title="Start/Stop Pomodoro">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
         <button id="stop-session" class="btn btn-danger">
           End Session
         </button>
@@ -89,10 +111,22 @@
       <p id="last-intervention" class="intervention-msg"></p>
     </div>
 
+    <!-- Dashboard Button -->
+    <div id="dashboard-section" class="section">
+      <button id="open-dashboard" class="btn btn-dashboard">
+        Open FocusDJ Dashboard
+      </button>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
-      <button id="open-options" class="btn-link">Settings</button>
-      <span class="divider">|</span>
+      <button id="open-camera" class="btn-link" title="Vision Focus Detection">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span id="camera-status">Camera</span>
+      </button>
       <button id="toggle-nuclear" class="btn-link">
         <span id="nuclear-status">Nuclear: Off</span>
       </button>

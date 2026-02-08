@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>FocusDJ Camera</title>
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #141420;
+      --bg-elevated: #1a1a28;
+      --text-primary: #f0f0f5;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-pink: #ff6b9d;
+      --accent-purple: #a855f7;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container { max-width: 600px; margin: 0 auto; }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle { color: var(--text-secondary); margin-bottom: 24px; }
+
+    .camera-section {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .camera-preview {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--bg-elevated);
+      min-height: 300px;
+    }
+
+    #video {
+      width: 100%;
+      display: block;
+      transform: scaleX(-1);
+      border-radius: var(--radius-md);
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform: scaleX(-1);
+      pointer-events: none;
+    }
+
+    .status-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-overlay.focused { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .status-overlay.away { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .status-overlay.distracted { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 14px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent-pink);
+    }
+
+    .stat-value.good { color: #22c55e; }
+    .stat-value.warning { color: #fbbf24; }
+    .stat-value.bad { color: #ef4444; }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    #status-message {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 12px 28px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(255, 107, 157, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover { border-color: var(--accent-pink); }
+
+    .privacy-note {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      margin-top: 20px;
+    }
+
+    .privacy-note svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent-purple);
+      flex-shrink: 0;
+    }
+
+    .privacy-note p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .privacy-note strong { color: var(--text-primary); }
+
+    .hidden { display: none !important; }
+
+    .detection-info {
+      margin-top: 12px;
+      padding: 10px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Vision Focus Detection</h1>
+    <p class="subtitle">Camera-based attention tracking (processed locally)</p>
+
+    <div class="camera-section">
+      <div class="camera-preview">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div id="statusOverlay" class="status-overlay focused hidden">
+          <span class="status-dot"></span>
+          <span id="statusText">Focused</span>
+        </div>
+      </div>
+
+      <div id="statusMessage">
+        <p>Click "Start Camera" to enable vision-based focus detection.</p>
+      </div>
+
+      <div id="stats" class="stats hidden">
+        <div class="stat">
+          <div class="stat-value" id="attentionScore">--</div>
+          <div class="stat-label">Attention</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="faceStatus">--</div>
+          <div class="stat-label">Face</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="gazeStatus">--</div>
+          <div class="stat-label">Gaze</div>
+        </div>
+      </div>
+
+      <div id="detectionInfo" class="detection-info hidden"></div>
+
+      <div class="controls">
+        <button id="startBtn" class="btn btn-primary">Start Camera</button>
+        <button id="stopBtn" class="btn btn-secondary hidden">Stop Camera</button>
+      </div>
+    </div>
+
+    <div class="privacy-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+      <p>
+        <strong>100% Private.</strong> All processing happens on your device.
+        No video frames are stored or transmitted. Only attention scores are used locally.
+      </p>
+    </div>
+  </div>
+
+  <script src="camera.js"></script>
+</body>
+</html>

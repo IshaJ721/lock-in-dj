@@ -1,0 +1,107 @@
+.stepper {
+  position: relative;
+  padding: 0 24px;
+  margin-bottom: 32px;
+}
+
+.stepper-track {
+  position: absolute;
+  top: 16px;
+  left: 48px;
+  right: 48px;
+  height: 2px;
+  background: var(--border-color);
+  border-radius: 1px;
+}
+
+.stepper-progress {
+  height: 100%;
+  background: var(--gradient-pink-purple);
+  border-radius: 1px;
+  transition: width var(--transition-normal);
+}
+
+.stepper-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: default;
+  padding: 0;
+  min-width: 80px;
+}
+
+.stepper-step.completed {
+  cursor: pointer;
+}
+
+.stepper-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.stepper-dot svg {
+  width: 14px;
+  height: 14px;
+}
+
+.stepper-step.current .stepper-dot {
+  background: var(--accent-pink);
+  border-color: var(--accent-pink);
+  color: white;
+  box-shadow: 0 0 20px var(--accent-pink-dim);
+}
+
+.stepper-step.completed .stepper-dot {
+  background: var(--accent-pink);
+  border-color: var(--accent-pink);
+  color: white;
+}
+
+.stepper-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.stepper-step.current .stepper-label,
+.stepper-step.completed .stepper-label {
+  color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .stepper-label {
+    display: none;
+  }
+
+  .stepper {
+    padding: 0 16px;
+  }
+
+  .stepper-track {
+    left: 32px;
+    right: 32px;
+  }
+}
