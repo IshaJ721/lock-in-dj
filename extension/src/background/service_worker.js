@@ -1,7 +1,7 @@
 // Main service worker - the brain of FocusDJ
 // Orchestrates: tab tracking → focus scoring → intervention → feedback
 
-import { loadState, saveState, updateState, categorizeSite } from './storage.js';
+import { loadState, saveState, updateState, categorizeSite, getMusicIntelligence, clearMusicIntelligence, setApiKey, getApiKey } from './storage.js';
 import {
   computeFocusScore,
   updateEMA,
@@ -16,6 +16,13 @@ import {
   getInterventionDescription,
 } from './decision_engine.js';
 import { applyIntervention, isYTMusicAvailable, getPlaybackInfo } from './music_controller.js';
+import {
+  recordTrackPlay,
+  getRecommendations,
+  getContextualRecommendation,
+  buildUserProfile,
+  clearMusicIntelligence as clearRecommendationData,
+} from './recommendation_engine.js';
 
 // ============================================================
 // Constants
@@ -78,6 +85,10 @@ const DEFAULT_DOOMSCROLL_SITES = [
 
 // Offscreen document state
 let offscreenCreated = false;
+
+// Track monitoring for music intelligence
+let currentTrackHandler = null;
+let lastKnownTrackId = null;
 
 // ============================================================
 // Tab tracking
@@ -547,6 +558,46 @@ async function updateDoomscrollDetection(state) {
 }
 
 // ============================================================
+// Track Monitoring for Music Intelligence
+// ============================================================
+
+/**
+ * Monitor track changes and record for BPM-focus correlation learning
+ */
+async function monitorTrackChange(state) {
+  const playback = await getPlaybackInfo();
+  if (!playback?.available || !playback.isPlaying) return;
+
+  const trackId = `${playback.track}_${playback.artist}`;
+
+  // New track detected
+  if (trackId !== lastKnownTrackId && playback.track) {
+    // End previous track recording
+    if (currentTrackHandler) {
+      try {
+        await currentTrackHandler(state.metrics.focusScore, false);
+      } catch (err) {
+        console.warn('[Track Monitor] Failed to end previous track:', err);
+      }
+    }
+
+    // Start new track recording
+    try {
+      currentTrackHandler = await recordTrackPlay(
+        { title: playback.track, artist: playback.artist, thumbnail: playback.thumbnail },
+        state.metrics.focusScore,
+        state.session.mode
+      );
+      lastKnownTrackId = trackId;
+      console.log('[Track Monitor] Now tracking:', playback.track, 'by', playback.artist);
+    } catch (err) {
+      console.warn('[Track Monitor] Failed to start track recording:', err);
+      currentTrackHandler = null;
+    }
+  }
+}
+
+// ============================================================
 // Main tick loop
 // ============================================================
 
@@ -562,6 +613,11 @@ async function tick() {
 
   // Check if YouTube Music is available (don't skip if not - still track focus)
   const musicAvailable = await isYTMusicAvailable();
+
+  // Monitor track changes for music intelligence (BPM-focus correlation)
+  if (musicAvailable && state.settings.aiRecommendationsEnabled !== false) {
+    await monitorTrackChange(state);
+  }
 
   // Update doomscroll detection (triggers alarms if threshold exceeded)
   await updateDoomscrollDetection(state);
@@ -928,6 +984,81 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         }
         sendResponse({ success: false, error: 'No productive tab found' });
+        break;
+
+      // ============================================
+      // Music Intelligence / Recommendations
+      // ============================================
+
+      case 'GET_RECOMMENDATIONS':
+        try {
+          const recommendations = await getRecommendations(message.count || 10);
+          sendResponse({ success: true, recommendations });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+        break;
+
+      case 'GET_MUSIC_PROFILE':
+        try {
+          const profile = await buildUserProfile();
+          sendResponse({ success: true, profile });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+        break;
+
+      case 'GET_CONTEXTUAL_RECOMMENDATION':
+        try {
+          const currentState = await loadState();
+          const playbackInfo = await getPlaybackInfo();
+          const recommendation = await getContextualRecommendation(
+            currentState.metrics.focusScore,
+            playbackInfo?.track ? { title: playbackInfo.track, artist: playbackInfo.artist } : null
+          );
+          sendResponse({ success: true, recommendation });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+        break;
+
+      case 'GET_MUSIC_INTELLIGENCE':
+        try {
+          const intelligence = await getMusicIntelligence();
+          sendResponse({ success: true, intelligence });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+        break;
+
+      case 'CLEAR_MUSIC_INTELLIGENCE':
+        try {
+          await clearMusicIntelligence();
+          await clearRecommendationData();
+          currentTrackHandler = null;
+          lastKnownTrackId = null;
+          sendResponse({ success: true });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+        break;
+
+      case 'SAVE_API_KEY':
+        try {
+          await setApiKey(message.keyType, message.value);
+          sendResponse({ success: true });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+        break;
+
+      case 'GET_API_KEY':
+        try {
+          const key = await getApiKey(message.keyType);
+          sendResponse({ success: true, hasKey: !!key });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
         break;
 
       default:

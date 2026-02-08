@@ -126,6 +126,7 @@ const DEFAULT_STATE = {
       BOOST_ENERGY: { value: 0.5, n: 1 },
       SWITCH_PLAYLIST: { value: 0.5, n: 1 },
       PATTERN_BREAK: { value: 0.5, n: 1 },
+      SMART_RECOMMEND: { value: 0.6, n: 1 },  // AI-powered recommendation
       NUCLEAR: { value: 0.2, n: 1 },
     },
   },
@@ -149,6 +150,9 @@ const DEFAULT_STATE = {
     visionEnabled: false,      // is vision detection opt-in enabled
     visionFaceThreshold: 10,   // seconds before face-missing penalty
     visionGazeThreshold: 5,    // seconds before looking-away penalty
+
+    // AI Music Recommendations
+    aiRecommendationsEnabled: true,  // use AI-powered music recommendations
   },
 
   // Music state
@@ -167,6 +171,30 @@ const DEFAULT_STATE = {
     categoryBreakdown: {},     // { category: totalMs }
     focusScoreAvg: 0,
     interventionCount: 0,
+  },
+
+  // Music Intelligence - BPM correlation and recommendations
+  musicIntelligence: {
+    trackHistory: [],          // Array of track plays with focus correlation
+    bpmModel: {
+      ranges: {
+        slow: { avgFocusScore: 0, sampleCount: 0, totalListenTimeMs: 0 },      // 60-90 BPM
+        moderate: { avgFocusScore: 0, sampleCount: 0, totalListenTimeMs: 0 },  // 90-120 BPM
+        upbeat: { avgFocusScore: 0, sampleCount: 0, totalListenTimeMs: 0 },    // 120-140 BPM
+        fast: { avgFocusScore: 0, sampleCount: 0, totalListenTimeMs: 0 },      // 140-180 BPM
+      },
+      optimalRange: null,      // 'slow' | 'moderate' | 'upbeat' | 'fast'
+      lastUpdated: null,
+    },
+    genreModel: {
+      genres: {},              // { 'lofi': { avgFocusScore, count }, ... }
+      optimalGenres: [],       // Top performing genres
+    },
+    recommendationCache: {
+      lastFetch: null,
+      recommendations: [],
+      ttlMs: 3600000,          // 1 hour cache
+    },
   },
 };
 
@@ -268,4 +296,64 @@ export async function resetState() {
 export async function getSettings() {
   const state = await loadState();
   return state.settings;
+}
+
+// ============================================================
+// API Key Management (separate from state for security)
+// ============================================================
+
+export async function setApiKey(keyType, value) {
+  await chrome.storage.local.set({ [`apiKey_${keyType}`]: value });
+}
+
+export async function getApiKey(keyType) {
+  const result = await chrome.storage.local.get(`apiKey_${keyType}`);
+  return result[`apiKey_${keyType}`] || null;
+}
+
+export async function hasApiKey(keyType) {
+  const key = await getApiKey(keyType);
+  return !!key;
+}
+
+export async function clearApiKey(keyType) {
+  await chrome.storage.local.remove(`apiKey_${keyType}`);
+}
+
+// ============================================================
+// Music Intelligence Helpers
+// ============================================================
+
+const TRACK_HISTORY_MAX = 500;
+
+export async function getTrackHistory(limit = 100) {
+  const state = await loadState();
+  const history = state.musicIntelligence?.trackHistory || [];
+  return history.slice(0, limit);
+}
+
+export async function addTrackToHistory(entry) {
+  await updateState(s => {
+    if (!s.musicIntelligence) {
+      s.musicIntelligence = DEFAULT_STATE.musicIntelligence;
+    }
+    s.musicIntelligence.trackHistory.unshift(entry);
+    if (s.musicIntelligence.trackHistory.length > TRACK_HISTORY_MAX) {
+      s.musicIntelligence.trackHistory = s.musicIntelligence.trackHistory.slice(0, TRACK_HISTORY_MAX);
+    }
+    return s;
+  });
+  return entry;
+}
+
+export async function getMusicIntelligence() {
+  const state = await loadState();
+  return state.musicIntelligence || DEFAULT_STATE.musicIntelligence;
+}
+
+export async function clearMusicIntelligence() {
+  await updateState(s => ({
+    ...s,
+    musicIntelligence: structuredClone(DEFAULT_STATE.musicIntelligence),
+  }));
 }

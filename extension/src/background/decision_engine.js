@@ -9,6 +9,7 @@ export const INTERVENTIONS = {
   PATTERN_BREAK: 'PATTERN_BREAK',     // Short pause then resume
   DUCK_VOLUME: 'DUCK_VOLUME',         // Lower volume to reduce distraction
   WHITE_NOISE: 'WHITE_NOISE',         // White noise burst for attention
+  SMART_RECOMMEND: 'SMART_RECOMMEND', // AI-powered track recommendation based on BPM-focus correlation
   VIOLA_POPUP: 'VIOLA_POPUP',         // Show Viola chatbot popup
   NUCLEAR: 'NUCLEAR',                 // Max volume blast for doomscrolling
 };
@@ -211,6 +212,8 @@ export function getInterventionDescription(type) {
       return 'Switching to focus playlist';
     case INTERVENTIONS.PATTERN_BREAK:
       return 'Pattern break audio cue';
+    case INTERVENTIONS.SMART_RECOMMEND:
+      return 'Playing AI-recommended track';
     case INTERVENTIONS.NUCLEAR:
       return 'WAKE UP! (Doomscroll detected)';
     default:

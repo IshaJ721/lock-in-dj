@@ -484,6 +484,107 @@ function restoreVolume() {
 }
 
 // ============================================================
+// Search and Play (for AI recommendations)
+// ============================================================
+
+/**
+ * Search for a track and play the first result
+ */
+async function searchAndPlay(query) {
+  if (!query) {
+    return { success: false, error: 'No query provided' };
+  }
+
+  console.log('[FocusDJ] Searching for:', query);
+
+  try {
+    // Find the search input
+    const searchInput = document.querySelector(SELECTORS.searchInput);
+    if (!searchInput) {
+      console.warn('[FocusDJ] Search input not found');
+      return { success: false, error: 'Search input not found' };
+    }
+
+    // Focus and clear the search input
+    searchInput.focus();
+    searchInput.value = '';
+
+    // Trigger input event to clear previous search
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Small delay before typing
+    await new Promise(r => setTimeout(r, 100));
+
+    // Type the query
+    searchInput.value = query;
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Small delay for search suggestions to appear
+    await new Promise(r => setTimeout(r, 300));
+
+    // Press Enter to search
+    searchInput.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      keyCode: 13,
+      code: 'Enter',
+      bubbles: true,
+    }));
+
+    // Wait for search results to load
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Find and click the first song result
+    // Try multiple selectors for different result types
+    const resultSelectors = [
+      'ytmusic-responsive-list-item-renderer[data-navigation-endpoint]',
+      'ytmusic-shelf-renderer ytmusic-responsive-list-item-renderer',
+      'ytmusic-two-row-item-renderer',
+      'ytmusic-shelf-renderer:first-child a.yt-simple-endpoint',
+    ];
+
+    let clicked = false;
+    for (const selector of resultSelectors) {
+      const firstResult = document.querySelector(selector);
+      if (firstResult) {
+        // Try to find a clickable element within
+        const clickable = firstResult.querySelector('a.yt-simple-endpoint') ||
+          firstResult.querySelector('yt-formatted-string') ||
+          firstResult;
+
+        if (clickable) {
+          clickable.click();
+          clicked = true;
+          console.log('[FocusDJ] Clicked search result');
+          break;
+        }
+      }
+    }
+
+    if (!clicked) {
+      // Fallback: Try clicking the play button on the first result
+      await new Promise(r => setTimeout(r, 500));
+      const playButton = document.querySelector('ytmusic-play-button-renderer');
+      if (playButton) {
+        playButton.click();
+        clicked = true;
+        console.log('[FocusDJ] Clicked play button on result');
+      }
+    }
+
+    if (clicked) {
+      // Wait a bit for playback to start
+      await new Promise(r => setTimeout(r, 1000));
+      return { success: true, query };
+    }
+
+    return { success: false, error: 'Could not click search result' };
+  } catch (err) {
+    console.error('[FocusDJ] Search and play error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================================================
 // Message Handling (from service worker)
 // ============================================================
 
@@ -587,6 +688,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
       case 'RESTORE_VOLUME':
         result = restoreVolume();
+        break;
+
+      // Search and play (for AI recommendations)
+      case 'SEARCH_AND_PLAY':
+        // Async operation
+        searchAndPlay(message.query).then(searchResult => {
+          // Can't send response after initial response, but log result
+          console.log('[FocusDJ] Search and play result:', searchResult);
+        });
+        result = { success: true, async: true };
         break;
 
       // Ping (for checking if tab is active)

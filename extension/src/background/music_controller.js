@@ -2,6 +2,8 @@
 // Sends commands to content script injected in music.youtube.com
 
 import { INTERVENTIONS } from './decision_engine.js';
+import { getContextualRecommendation } from './recommendation_engine.js';
+import { loadState } from './storage.js';
 
 // ============================================================
 // Tab Management
@@ -123,6 +125,9 @@ export async function applyIntervention(interventionType) {
     case INTERVENTIONS.WHITE_NOISE:
       return whiteNoiseBurst();
 
+    case INTERVENTIONS.SMART_RECOMMEND:
+      return smartRecommend();
+
     case INTERVENTIONS.VIOLA_POPUP:
       // Handled by service worker directly
       return { success: true, handled: 'service_worker' };
@@ -185,6 +190,68 @@ export async function restoreVolume() {
 async function whiteNoiseBurst(duration = 2000) {
   const result = await sendToYTMusic('WHITE_NOISE', { duration });
   console.log('[Music Controller] White noise result:', result);
+  return result;
+}
+
+/**
+ * SMART_RECOMMEND: AI-powered track recommendation based on BPM-focus correlation
+ */
+async function smartRecommend() {
+  try {
+    const state = await loadState();
+    const playbackInfo = await getPlaybackInfo();
+
+    // Get contextual recommendation based on current focus and track
+    const recommendation = await getContextualRecommendation(
+      state.metrics.focusScore,
+      playbackInfo?.track ? { title: playbackInfo.track, artist: playbackInfo.artist } : null
+    );
+
+    if (!recommendation) {
+      console.log('[Music Controller] No recommendation available, falling back to boost energy');
+      return boostEnergy();
+    }
+
+    console.log('[Music Controller] Smart recommendation:', recommendation.title, 'by', recommendation.artist);
+    console.log('[Music Controller] Reason:', recommendation.reason);
+
+    // Search and play the recommended track
+    const searchResult = await searchAndPlayTrack(recommendation.searchQuery);
+
+    if (searchResult.success) {
+      return {
+        success: true,
+        action: 'smart_recommend',
+        recommendation,
+      };
+    }
+
+    // Fallback to next track if search fails
+    console.log('[Music Controller] Search failed, falling back to next track');
+    return next();
+  } catch (err) {
+    console.error('[Music Controller] Smart recommend error:', err);
+    return boostEnergy();
+  }
+}
+
+/**
+ * Search for a track and play it on YouTube Music
+ */
+async function searchAndPlayTrack(query) {
+  if (!query) {
+    return { success: false, error: 'No search query' };
+  }
+
+  console.log('[Music Controller] Searching for:', query);
+  const result = await sendToYTMusic('SEARCH_AND_PLAY', { query });
+
+  if (result.success) {
+    console.log('[Music Controller] Successfully started playing search result');
+  } else {
+    console.warn('[Music Controller] Search and play failed:', result.error);
+  }
+
   return result;
 }
 

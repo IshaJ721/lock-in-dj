@@ -93,6 +93,85 @@
       </div>
     </div>
 
+    <!-- AI Music Recommendations -->
+    <div class="options-section">
+      <h2>AI Music Recommendations</h2>
+      <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
+        Connect AI services for personalized music recommendations based on your focus patterns.
+        API keys are stored locally and never sent to our servers.
+      </p>
+
+      <div class="form-group">
+        <label>Groq API Key</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="groq-api-key" placeholder="gsk_..." style="flex: 1; padding: 10px; background: #0f0f0f; border: 1px solid #333; border-radius: 8px; color: #e5e5e5;">
+          <button id="toggle-groq-key" style="padding: 10px 14px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; cursor: pointer; color: #888;">Show</button>
+        </div>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">
+          Get your free API key at <a href="https://console.groq.com" target="_blank" style="color: #ff6b9d;">console.groq.com</a>
+        </p>
+        <div id="groq-status" style="margin-top: 4px; font-size: 12px;"></div>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label>SERP API Key (Optional)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="serp-api-key" placeholder="Your SERP API key" style="flex: 1; padding: 10px; background: #0f0f0f; border: 1px solid #333; border-radius: 8px; color: #e5e5e5;">
+          <button id="toggle-serp-key" style="padding: 10px 14px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; cursor: pointer; color: #888;">Show</button>
+        </div>
+        <p style="font-size: 11px; color: #666; margin-top: 4px;">
+          Enables BPM lookup and music discovery. Get a key at <a href="https://serpapi.com" target="_blank" style="color: #ff6b9d;">serpapi.com</a>
+        </p>
+        <div id="serp-status" style="margin-top: 4px; font-size: 12px;"></div>
+      </div>
+
+      <button id="test-apis" class="btn-save" style="background: #333; margin-top: 16px;">
+        Test API Connections
+      </button>
+    </div>
+
+    <!-- Music Intelligence -->
+    <div class="options-section">
+      <h2>Music Intelligence</h2>
+      <p style="font-size: 13px; color: #888; margin-bottom: 16px;">
+        Your personalized music-focus correlation model learns which BPM ranges help you focus best.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div style="background: #1a1a1a; border-radius: 8px; padding: 16px; text-align: center;">
+          <span id="tracks-analyzed" style="display: block; font-size: 24px; font-weight: 600; color: #ff6b9d;">0</span>
+          <span style="font-size: 11px; color: #666;">Tracks Analyzed</span>
+        </div>
+        <div style="background: #1a1a1a; border-radius: 8px; padding: 16px; text-align: center;">
+          <span id="optimal-bpm" style="display: block; font-size: 24px; font-weight: 600; color: #ff6b9d;">--</span>
+          <span style="font-size: 11px; color: #666;">Optimal BPM</span>
+        </div>
+        <div style="background: #1a1a1a; border-radius: 8px; padding: 16px; text-align: center;">
+          <span id="top-genre" style="display: block; font-size: 24px; font-weight: 600; color: #ff6b9d;">--</span>
+          <span style="font-size: 11px; color: #666;">Top Genre</span>
+        </div>
+      </div>
+
+      <div class="form-group toggle-group">
+        <div>
+          <label style="margin: 0;">Enable AI Recommendations</label>
+          <p style="font-size: 11px; color: #666; margin-top: 2px;">Use learned patterns to recommend focus-optimal tracks</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="ai-recommendations-enabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div id="bpm-model-details" style="margin-top: 16px; padding: 12px; background: #1a1a1a; border-radius: 8px; font-size: 12px; color: #888;">
+        <p>BPM correlation data will appear here as you listen to music.</p>
+      </div>
+
+      <button id="clear-music-data" class="btn-save" style="background: #ef4444; margin-top: 16px;">
+        Clear Music Learning Data
+      </button>
+    </div>
+
     <!-- Privacy -->
     <div class="options-section">
       <h2>Privacy</h2>
