@@ -490,6 +490,7 @@ function restoreVolume() {
 
 /**
  * Search for a track and play the first result
+ * SIMPLIFIED: If search fails, just skip to next track instead of breaking the page
  */
 async function searchAndPlay(query) {
   if (!query) {
@@ -499,79 +500,82 @@ async function searchAndPlay(query) {
   console.log('[FocusDJ] Searching for:', query);
 
   try {
-    // Try multiple ways to find and interact with search
-    let searchInput = document.querySelector(SELECTORS.searchInput);
+    // Try to find search input with multiple selectors
+    let searchInput = document.querySelector('input.ytmusic-search-box') ||
+      document.querySelector('ytmusic-search-box input') ||
+      document.querySelector('input[placeholder*="Search"]') ||
+      document.querySelector('input[aria-label*="Search"]');
 
-    // If direct input not found, try clicking the search box first
+    // If not found, try clicking the search icon/box first
     if (!searchInput) {
-      const searchBox = document.querySelector(SELECTORS.searchBox);
-      if (searchBox) {
-        searchBox.click();
-        await new Promise(r => setTimeout(r, 300));
-        searchInput = document.querySelector(SELECTORS.searchInput);
+      const searchTriggers = [
+        'ytmusic-search-box',
+        '.search-box',
+        '[aria-label="Search"]',
+        'button[aria-label*="Search"]',
+      ];
+
+      for (const selector of searchTriggers) {
+        const trigger = document.querySelector(selector);
+        if (trigger) {
+          trigger.click();
+          await new Promise(r => setTimeout(r, 500));
+          searchInput = document.querySelector('input.ytmusic-search-box') ||
+            document.querySelector('ytmusic-search-box input') ||
+            document.querySelector('input[placeholder*="Search"]');
+          if (searchInput) break;
+        }
       }
     }
 
-    // Try finding by placeholder
+    // If still no search input, fallback to just skipping track
     if (!searchInput) {
-      searchInput = document.querySelector('input[placeholder*="Search"]') ||
-        document.querySelector('input[aria-label*="Search"]');
+      console.warn('[FocusDJ] Search input not found, skipping to next track instead');
+      next();
+      return { success: true, fallback: 'next_track' };
     }
 
-    if (!searchInput) {
-      console.warn('[FocusDJ] Search input not found, trying URL navigation');
-      // Fallback: Navigate directly to search URL
-      const searchUrl = `https://music.youtube.com/search?q=${encodeURIComponent(query)}`;
-      window.location.href = searchUrl;
-      await new Promise(r => setTimeout(r, 3000));
-      return playFirstSearchResult();
-    }
-
-    // Focus and clear the search input
+    // Focus and clear
     searchInput.focus();
-    searchInput.value = '';
+    searchInput.select(); // Select all existing text
 
-    // Trigger input event to clear previous search
+    await new Promise(r => setTimeout(r, 100));
+
+    // Clear and type query
+    searchInput.value = query;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
     searchInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Small delay before typing
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 300));
 
-    // Type the query character by character for more reliable input
-    for (const char of query) {
-      searchInput.value += char;
-      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-      await new Promise(r => setTimeout(r, 20));
-    }
-
-    // Small delay for search suggestions to appear
-    await new Promise(r => setTimeout(r, 500));
-
-    // Press Enter to search
-    const enterEvent = new KeyboardEvent('keydown', {
+    // Submit search with Enter key
+    searchInput.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Enter',
-      keyCode: 13,
       code: 'Enter',
+      keyCode: 13,
       which: 13,
       bubbles: true,
-      cancelable: true,
-    });
-    searchInput.dispatchEvent(enterEvent);
+    }));
 
-    // Also try form submit
-    const form = searchInput.closest('form');
-    if (form) {
-      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    // Wait for results
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Try to play first result
+    const playResult = await playFirstSearchResult();
+
+    if (!playResult.success) {
+      // If clicking result failed, just skip to next track
+      console.warn('[FocusDJ] Could not play search result, skipping to next track');
+      next();
+      return { success: true, fallback: 'next_track' };
     }
 
-    // Wait for search results to load
-    await new Promise(r => setTimeout(r, 2500));
-
-    return playFirstSearchResult();
+    return playResult;
   } catch (err) {
-    console.error('[FocusDJ] Search and play error:', err);
-    return { success: false, error: err.message };
+    console.error('[FocusDJ] Search error:', err);
+    // On any error, just skip to next track instead of breaking
+    next();
+    return { success: true, fallback: 'next_track', error: err.message };
   }
 }
 

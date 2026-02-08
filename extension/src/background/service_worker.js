@@ -693,7 +693,10 @@ async function tick() {
   }
 
   // Check if we should intervene (only if music is available)
-  if (musicAvailable) {
+  // Skip intervention if alarm was just triggered (avoid double-action)
+  const recentAlarm = (now - lastDoomscrollAlarm < 10000) || (now - lastFaceAwayAlarm < 10000);
+
+  if (musicAvailable && !recentAlarm) {
     const interventionCheck = shouldIntervene(state, now);
 
     if (interventionCheck.should) {
