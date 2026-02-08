@@ -63,9 +63,9 @@ function checkRateLimit(apiName) {
   return true;
 }
 
-// Default API keys (fallback if not configured in options)
+// API keys are configured in options - no defaults hardcoded
 const DEFAULT_API_KEYS = {
-  groq: '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',
+  groq: null,
   serp: null,
 };
 

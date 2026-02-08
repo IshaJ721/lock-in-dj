@@ -230,8 +230,8 @@ export function categorizeSite(hostname, settings = {}) {
 // Cache for AI-categorized sites
 const aiCategoryCache = {};
 
-// Default Groq API key
-const DEFAULT_GROQ_KEY = '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';
+// API key configured in options - no default hardcoded
+const DEFAULT_GROQ_KEY = null;
 
 /**
  * Categorize a site using AI (Groq)

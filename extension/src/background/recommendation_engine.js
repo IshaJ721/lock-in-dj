@@ -6,9 +6,9 @@ import { lookupBpm, getBpmRange, getBpmRangeCenter } from './bpm_lookup.js';
 const CACHE_TTL_MS = 3600000; // 1 hour
 const TRACK_HISTORY_MAX = 500;
 
-// Default API keys (fallback if not configured in options)
+// API keys are configured in options - no defaults hardcoded
 const DEFAULT_API_KEYS = {
-  groq: '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',
+  groq: null,
   serp: null,
 };
 
