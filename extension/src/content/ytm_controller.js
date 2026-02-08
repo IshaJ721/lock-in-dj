@@ -490,7 +490,6 @@ function restoreVolume() {
 
 /**
  * Search for a track and play the first result
- * SIMPLIFIED: If search fails, just skip to next track instead of breaking the page
  */
 async function searchAndPlay(query) {
   if (!query) {
@@ -500,72 +499,102 @@ async function searchAndPlay(query) {
   console.log('[FocusDJ] Searching for:', query);
 
   try {
-    // Try to find search input with multiple selectors
-    let searchInput = document.querySelector('input.ytmusic-search-box') ||
-      document.querySelector('ytmusic-search-box input') ||
-      document.querySelector('input[placeholder*="Search"]') ||
-      document.querySelector('input[aria-label*="Search"]');
+    // Find the search box
+    const searchBox = document.querySelector('ytmusic-search-box');
+    let searchInput = document.querySelector('ytmusic-search-box input') ||
+      document.querySelector('input.ytmusic-search-box') ||
+      document.querySelector('input[placeholder*="Search"]');
 
-    // If not found, try clicking the search icon/box first
-    if (!searchInput) {
-      const searchTriggers = [
-        'ytmusic-search-box',
-        '.search-box',
-        '[aria-label="Search"]',
-        'button[aria-label*="Search"]',
-      ];
-
-      for (const selector of searchTriggers) {
-        const trigger = document.querySelector(selector);
-        if (trigger) {
-          trigger.click();
-          await new Promise(r => setTimeout(r, 500));
-          searchInput = document.querySelector('input.ytmusic-search-box') ||
-            document.querySelector('ytmusic-search-box input') ||
-            document.querySelector('input[placeholder*="Search"]');
-          if (searchInput) break;
-        }
-      }
+    // Click search box to activate it
+    if (searchBox && !searchInput) {
+      searchBox.click();
+      await new Promise(r => setTimeout(r, 300));
+      searchInput = document.querySelector('ytmusic-search-box input');
     }
 
-    // If still no search input, fallback to just skipping track
     if (!searchInput) {
-      console.warn('[FocusDJ] Search input not found, skipping to next track instead');
+      console.warn('[FocusDJ] Search input not found, skipping track');
       next();
       return { success: true, fallback: 'next_track' };
     }
 
-    // Focus and clear
-    searchInput.focus();
-    searchInput.select(); // Select all existing text
+    console.log('[FocusDJ] Found search input, typing query...');
 
+    // Clear and focus
+    searchInput.focus();
+    searchInput.value = '';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
     await new Promise(r => setTimeout(r, 100));
 
-    // Clear and type query
+    // Type the query
     searchInput.value = query;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    searchInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    await new Promise(r => setTimeout(r, 300));
+    console.log('[FocusDJ] Query typed, waiting for suggestions...');
+    await new Promise(r => setTimeout(r, 500));
 
-    // Submit search with Enter key
-    searchInput.dispatchEvent(new KeyboardEvent('keydown', {
-      key: 'Enter',
-      code: 'Enter',
-      keyCode: 13,
-      which: 13,
-      bubbles: true,
-    }));
+    // Try multiple methods to submit the search
+    let searchSubmitted = false;
 
-    // Wait for results
-    await new Promise(r => setTimeout(r, 2000));
+    // Method 1: Find and click a search suggestion that matches
+    const suggestions = document.querySelectorAll('ytmusic-search-suggestion-renderer, ytmusic-suggestion-renderer');
+    if (suggestions.length > 0) {
+      console.log('[FocusDJ] Found', suggestions.length, 'suggestions, clicking first...');
+      suggestions[0].click();
+      searchSubmitted = true;
+    }
+
+    // Method 2: Press Enter with all event types
+    if (!searchSubmitted) {
+      console.log('[FocusDJ] No suggestions, pressing Enter...');
+
+      // Simulate full keyboard event sequence
+      const enterEvents = [
+        new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }),
+        new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }),
+        new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }),
+      ];
+
+      for (const event of enterEvents) {
+        searchInput.dispatchEvent(event);
+        await new Promise(r => setTimeout(r, 50));
+      }
+
+      // Also try on the search box container
+      if (searchBox) {
+        for (const event of [
+          new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }),
+        ]) {
+          searchBox.dispatchEvent(event);
+        }
+      }
+    }
+
+    // Method 3: Click search icon/button if exists
+    const searchButton = document.querySelector('ytmusic-search-box #search-icon') ||
+      document.querySelector('ytmusic-search-box button') ||
+      document.querySelector('[aria-label="Search"]');
+    if (searchButton) {
+      console.log('[FocusDJ] Clicking search button...');
+      searchButton.click();
+    }
+
+    // Wait for search results page to load
+    console.log('[FocusDJ] Waiting for results...');
+    await new Promise(r => setTimeout(r, 2500));
+
+    // Check if we're on search results page
+    const isSearchPage = window.location.href.includes('/search') ||
+      document.querySelector('ytmusic-search-page') ||
+      document.querySelector('ytmusic-section-list-renderer');
+
+    console.log('[FocusDJ] On search page:', isSearchPage);
 
     // Try to play first result
     const playResult = await playFirstSearchResult();
 
     if (!playResult.success) {
-      // If clicking result failed, just skip to next track
-      console.warn('[FocusDJ] Could not play search result, skipping to next track');
+      console.warn('[FocusDJ] Could not play result, skipping track');
       next();
       return { success: true, fallback: 'next_track' };
     }
@@ -573,7 +602,6 @@ async function searchAndPlay(query) {
     return playResult;
   } catch (err) {
     console.error('[FocusDJ] Search error:', err);
-    // On any error, just skip to next track instead of breaking
     next();
     return { success: true, fallback: 'next_track', error: err.message };
   }
@@ -583,74 +611,96 @@ async function searchAndPlay(query) {
  * Click and play the first search result
  */
 async function playFirstSearchResult() {
-  // Find and click the first song result
-  // Try multiple selectors for different result types and YTM versions
-  const resultSelectors = [
-    // Songs in search results
-    'ytmusic-responsive-list-item-renderer',
-    'ytmusic-shelf-renderer[title="Songs"] ytmusic-responsive-list-item-renderer',
-    // Videos and other content
-    'ytmusic-video-renderer',
-    'ytmusic-two-row-item-renderer',
-    // Generic clickable results
-    'a.yt-simple-endpoint[href*="watch"]',
-    'ytmusic-shelf-renderer a.yt-simple-endpoint',
-  ];
+  console.log('[FocusDJ] Looking for search results to play...');
 
-  let clicked = false;
+  // Wait a moment for results to render
+  await new Promise(r => setTimeout(r, 500));
 
-  for (const selector of resultSelectors) {
-    const results = document.querySelectorAll(selector);
-    console.log(`[FocusDJ] Found ${results.length} results with selector: ${selector}`);
+  // Strategy 1: Find the "Top result" or first song and click its play button
+  const topResultPlay = document.querySelector('ytmusic-card-shelf-renderer ytmusic-play-button-renderer') ||
+    document.querySelector('ytmusic-shelf-renderer ytmusic-play-button-renderer');
 
-    if (results.length > 0) {
-      const firstResult = results[0];
+  if (topResultPlay) {
+    console.log('[FocusDJ] Found top result play button, clicking...');
+    topResultPlay.click();
+    await new Promise(r => setTimeout(r, 1000));
+    return { success: true, method: 'top_result_play' };
+  }
 
-      // Try to find a clickable play button or link within
-      const playBtn = firstResult.querySelector('ytmusic-play-button-renderer') ||
-        firstResult.querySelector('.play-button') ||
-        firstResult.querySelector('button[aria-label*="Play"]');
+  // Strategy 2: Find any song row and click it
+  const songRows = document.querySelectorAll('ytmusic-responsive-list-item-renderer');
+  console.log('[FocusDJ] Found', songRows.length, 'song rows');
 
-      if (playBtn) {
-        playBtn.click();
-        clicked = true;
-        console.log('[FocusDJ] Clicked play button on result');
-        break;
-      }
+  for (const row of songRows) {
+    // Try play button first
+    const playBtn = row.querySelector('ytmusic-play-button-renderer');
+    if (playBtn) {
+      console.log('[FocusDJ] Clicking play button in song row...');
+      playBtn.click();
+      await new Promise(r => setTimeout(r, 1000));
+      return { success: true, method: 'song_row_play' };
+    }
 
-      // Try clicking the item itself
-      const clickable = firstResult.querySelector('a.yt-simple-endpoint') ||
-        firstResult.querySelector('a[href*="watch"]') ||
-        firstResult;
-
-      if (clickable) {
-        clickable.click();
-        clicked = true;
-        console.log('[FocusDJ] Clicked search result item');
-        break;
-      }
+    // Try clicking the row title/link
+    const titleLink = row.querySelector('a.yt-simple-endpoint');
+    if (titleLink) {
+      console.log('[FocusDJ] Clicking song title link...');
+      titleLink.click();
+      await new Promise(r => setTimeout(r, 1000));
+      return { success: true, method: 'song_title_click' };
     }
   }
 
-  if (!clicked) {
-    // Last resort: find any play button
-    await new Promise(r => setTimeout(r, 500));
-    const anyPlayBtn = document.querySelector('ytmusic-play-button-renderer:not([disabled])');
-    if (anyPlayBtn) {
-      anyPlayBtn.click();
-      clicked = true;
-      console.log('[FocusDJ] Clicked first available play button');
+  // Strategy 3: Find video renderers
+  const videos = document.querySelectorAll('ytmusic-video-renderer, ytmusic-two-row-item-renderer');
+  console.log('[FocusDJ] Found', videos.length, 'video items');
+
+  for (const video of videos) {
+    const playBtn = video.querySelector('ytmusic-play-button-renderer');
+    if (playBtn) {
+      console.log('[FocusDJ] Clicking video play button...');
+      playBtn.click();
+      await new Promise(r => setTimeout(r, 1000));
+      return { success: true, method: 'video_play' };
+    }
+
+    const link = video.querySelector('a[href*="watch"]');
+    if (link) {
+      console.log('[FocusDJ] Clicking video link...');
+      link.click();
+      await new Promise(r => setTimeout(r, 1000));
+      return { success: true, method: 'video_link' };
     }
   }
 
-  if (clicked) {
-    // Wait a bit for playback to start
-    await new Promise(r => setTimeout(r, 1500));
-    return { success: true };
+  // Strategy 4: Just find ANY play button on the page
+  const anyPlayButtons = document.querySelectorAll('ytmusic-play-button-renderer');
+  console.log('[FocusDJ] Found', anyPlayButtons.length, 'play buttons total');
+
+  for (const btn of anyPlayButtons) {
+    // Skip if it's the main player play button
+    if (btn.closest('ytmusic-player-bar')) continue;
+
+    console.log('[FocusDJ] Clicking any available play button...');
+    btn.click();
+    await new Promise(r => setTimeout(r, 1000));
+    return { success: true, method: 'any_play_button' };
   }
 
-  console.warn('[FocusDJ] Could not find any playable result');
-  return { success: false, error: 'Could not click search result' };
+  // Strategy 5: Find any watch link
+  const watchLinks = document.querySelectorAll('a[href*="watch"]');
+  console.log('[FocusDJ] Found', watchLinks.length, 'watch links');
+
+  for (const link of watchLinks) {
+    if (link.closest('ytmusic-player-bar')) continue;
+    console.log('[FocusDJ] Clicking watch link...');
+    link.click();
+    await new Promise(r => setTimeout(r, 1000));
+    return { success: true, method: 'watch_link' };
+  }
+
+  console.warn('[FocusDJ] Could not find any playable content');
+  return { success: false, error: 'No playable content found' };
 }
 
 // ============================================================
